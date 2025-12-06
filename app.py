@@ -38,7 +38,7 @@ def load_settings():
                 saved_config = json.load(f)
                 config.update(saved_config)
         except Exception as e:
-            pass
+            st.error(f"設定読み込みエラー: {e}")
     for key, value in config.items():
         if key not in st.session_state:
             st.session_state[key] = value
@@ -74,8 +74,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 💰 簡易資産シミュレータ v2.20")
-    st.caption("Ver. Detail View (NISA Breakdown)")
+    st.markdown("### 💰 簡易資産シミュレータ v2.21")
+    st.caption("Ver. Table Column Reordered")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -223,10 +223,10 @@ def main():
         "Cash": int(cash),
         "401k": int(k401),
         "NISA": int(nisa),
-        "NISA元本": int(nisa_principal),
         "Other": int(paypay),
-        "NISA積立枠": 0, # 初期値
-        "NISA成長枠": 0  # 初期値
+        "NISA積立枠": 0,
+        "NISA成長枠": 0,
+        "NISA元本": int(nisa_principal) # ★一番右へ
     })
 
     for age in range(current_age + 1, end_age + 1):
@@ -268,7 +268,6 @@ def main():
         # 4. 積立 (つみたて投資枠)
         val_k401_add = k401_monthly * 12 if (is_working and age < age_401k_get) else 0
         
-        # ★記録用変数リセット
         nisa_tsumitate_year = 0
         nisa_growth_year = 0
 
@@ -281,7 +280,7 @@ def main():
             lifetime_room = max(0, NISA_LIFETIME_LIMIT - nisa_principal)
             val_nisa_add = min(raw_nisa_add, NISA_TSUMITATE_LIMIT, lifetime_room)
             
-            nisa_tsumitate_year = val_nisa_add # 記録
+            nisa_tsumitate_year = val_nisa_add
         
         val_paypay_add = paypay_monthly * 12 if (can_invest and age <= paypay_stop_age) else 0
 
@@ -357,7 +356,7 @@ def main():
             nisa += move
             nisa_principal += move
             
-            nisa_growth_year = move # 記録
+            nisa_growth_year = move
 
         records.append({
             "Age": age,
@@ -365,10 +364,10 @@ def main():
             "Cash": int(cash),
             "401k": int(k401),
             "NISA": int(nisa),
-            "NISA元本": int(nisa_principal),
             "Other": int(paypay),
-            "NISA積立枠": int(nisa_tsumitate_year), # ★追加
-            "NISA成長枠": int(nisa_growth_year)     # ★追加
+            "NISA積立枠": int(nisa_tsumitate_year),
+            "NISA成長枠": int(nisa_growth_year),
+            "NISA元本": int(nisa_principal) # ★一番右へ
         })
 
     # --- 結果表示 ---
