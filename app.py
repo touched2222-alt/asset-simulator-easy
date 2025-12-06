@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import json
-import io # ★ ファイル入出力機能を追加
+import io 
 
 # --- デフォルト設定値 ---
 DEFAULT_CONFIG = {
@@ -32,11 +32,9 @@ DEFAULT_CONFIG = {
 # アップロードされたJSONデータを処理し、st.session_stateに反映
 def load_uploaded_settings(uploaded_file):
     try:
-        # ファイルからバイトデータを読み込み、JSONとしてパース
         bytes_data = uploaded_file.getvalue()
         data = json.loads(bytes_data)
         
-        # 読み込んだデータをsession_stateに反映
         for key, value in data.items():
             if key in st.session_state:
                 st.session_state[key] = value
@@ -47,32 +45,23 @@ def load_uploaded_settings(uploaded_file):
 # 現在の設定をJSON文字列として取得（ダウンロードボタン用）
 def get_download_json():
     save_data = {}
-    # st.session_stateにある設定値を全てコピー
     for key in DEFAULT_CONFIG.keys():
         if key in st.session_state:
             save_data[key] = st.session_state[key]
     
-    # 辞書をJSON文字列に変換し、バイトデータとして返す
     json_string = json.dumps(save_data, indent=4, ensure_ascii=False)
     return json_string.encode('utf-8')
 
 # --- メインアプリ ---
 st.set_page_config(page_title="簡易資産シミュレータ", page_icon="💰", layout="wide")
 
-# app.py, line 105 (def main(): の直後)
-
 def main():
-    # ----------------------------------------------------
-    # ★ 既存のセッションステート初期化ロジックを、以下のように簡略化します
-    if "is_initialized" not in st.session_state:
-        # DEFAULT_CONFIGの内容を、st.session_stateにコピーして初期化
+    # アプリ起動時にデフォルト設定値をst.session_stateにロード
+    if "first_load_done" not in st.session_state:
         for key, value in DEFAULT_CONFIG.items():
-            st.session_state[key] = value
-        st.session_state["is_initialized"] = True
-    # ----------------------------------------------------
-    
-    # --- スタイル設定 ---
-    st.markdown("""
+            if key not in st.session_state:
+                st.session_state[key] = value
+        st.session_state["first_load_done"] = True
     
     # --- スタイル設定 ---
     st.markdown("""
@@ -93,7 +82,7 @@ def main():
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
     
-    # ★ サーバー保存ボタンを削除し、ダウンロード/アップロード機能に置き換え
+    # ★ ダウンロード/アップロード機能
     st.sidebar.download_button(
         label="💾 設定をダウンロード (PCに保存)",
         data=get_download_json(),
@@ -108,7 +97,7 @@ def main():
 
     if uploaded_file is not None:
         load_uploaded_settings(uploaded_file)
-    # ----------------------------------------------------------------------
+    # ----------------------
     
     tab1, tab2, tab3, tab4, tab5 = st.sidebar.tabs(["基本・初期", "収入・支出", "積立設定", "取崩し戦略", "臨時収支"])
 
@@ -450,32 +439,4 @@ def main():
         c1, c2, c3, c4, c5 = st.columns(5)
         c1.metric(f"{target_age}歳の総資産", f"{row['Total']/10000:,.0f}万円")
         c2.metric("うち現金", f"{row['Cash']/10000:,.0f}万円")
-        c3.metric("うち新NISA", f"{row['NISA']/10000:,.0f}万円", delta=f"元本 {row['NISA元本']/10000:,.0f}万円")
-        c4.metric("うち401k", f"{row['401k']/10000:,.0f}万円")
-        c5.metric("うち他運用", f"{row['Other']/10000:,.0f}万円")
-    except: st.error("データ取得エラー")
-
-    # 3. グラフ切替ボタン
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.radio("グラフ表示モード", ["積み上げ (総資産)", "折れ線 (個別推移)"], 
-             key="graph_mode", horizontal=True)
-
-    # 4. 明細
-    st.markdown("<br>", unsafe_allow_html=True)
-    with st.expander("📝 年単位の資産明細を表示", expanded=True):
-        st.dataframe(df, use_container_width=True)
-
-    # 5. ルール
-    st.markdown("<br>", unsafe_allow_html=True)
-    with st.expander("ℹ️ このシミュレータのルール（クリックで開く）"):
-        st.markdown("""
-        1.  **収入はすべて「現金」へ**：給与・年金・臨時収入はまず現金貯金に入ります。
-        2.  **年金の手取り**：入力した年金月額から、設定した税率（社会保険料含む）を引いた額が収入となります。
-        3.  **つみたて枠（年120万）**：「NISA積立」で設定した金額が優先的に充てられます。
-        4.  **成長枠（年240万）**：「最低貯蓄額」を超えた余剰金が、この枠を使って自動投資されます。
-        5.  **現金不足時の「取り崩し」**：現金がマイナスになった場合、設定した優先順位に従って補填します。
-        6.  **積立停止**：現金がマイナス（借金）の年は、新規の積立投資を行いません。（※ただし、働いている期間は給与天引き感覚で積立を実行します）
-        """)
-
-if __name__ == '__main__':
-    main()
+        c3.metric("うち新NISA", f"{row['NISA']/10000:,.0f}万円", delta=f"
