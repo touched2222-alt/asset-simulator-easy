@@ -38,9 +38,7 @@ def load_settings():
                 saved_config = json.load(f)
                 config.update(saved_config)
         except Exception as e:
-            # エラー時は無視してデフォルトを使う
             pass
-    
     for key, value in config.items():
         if key not in st.session_state:
             st.session_state[key] = value
@@ -53,16 +51,9 @@ def save_settings():
     try:
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             json.dump(save_data, f, indent=4, ensure_ascii=False)
-        st.sidebar.success(f"✅ 設定を保存しました")
+        st.sidebar.success(f"✅ 設定を保存しました！\n(保存先: {CONFIG_FILE})")
     except Exception as e:
         st.sidebar.error(f"保存失敗: {e}")
-
-def reset_settings():
-    if os.path.exists(CONFIG_FILE):
-        os.remove(CONFIG_FILE)
-    for key, value in DEFAULT_CONFIG.items():
-        st.session_state[key] = value
-    st.experimental_rerun()
 
 st.set_page_config(page_title="簡易資産シミュレータ", page_icon="💰", layout="wide")
 
@@ -71,7 +62,6 @@ def main():
         load_settings()
         st.session_state["first_load_done"] = True
 
-    # CSS
     st.markdown("""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
@@ -84,18 +74,13 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 💰 簡易資産シミュレータ v2.19")
-    st.caption("Ver. Fix Year 1 Contribution")
+    st.markdown("### 💰 簡易資産シミュレータ v2.20")
+    st.caption("Ver. Detail View (NISA Breakdown)")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
-    c_btn1, c_btn2 = st.sidebar.columns(2)
-    with c_btn1:
-        if st.button("💾 保存"):
-            save_settings()
-    with c_btn2:
-        if st.button("🔄 リセット"):
-            reset_settings()
+    if st.sidebar.button("💾 設定をPCに保存"):
+        save_settings()
 
     tab1, tab2, tab3, tab4, tab5 = st.sidebar.tabs(["基本・初期", "収入・支出", "積立設定", "取崩し戦略", "臨時収支"])
 
@@ -153,12 +138,14 @@ def main():
         col_t1, col_t2 = st.columns(2)
         with col_t1:
             st.markdown("**1. NISA つみたて投資枠**")
-            nisa_monthly = st.number_input("月額積立(円)", 0, 500000, step=1000, key="nisa_monthly")
+            nisa_monthly = st.number_input("月額積立(円)", 0, 500000, step=1000, key="nisa_monthly", help="ここは年間120万円が上限として計算されます")
+            
             nisa_year_val = nisa_monthly * 12
             if nisa_year_val <= 1200000:
                 st.info(f"✅ 年間 {nisa_year_val/10000:.0f}万 / 120万")
             else:
                 st.warning(f"⚠️ 年間120万を超えています。シミュレーション上は120万として計算します。")
+
             nisa_stop_age = st.number_input("NISA積立終了年齢", 20, 100, key="nisa_stop_age")
         with col_t2:
             st.markdown("**2. 他運用 (特定口座など)**")
@@ -225,9 +212,10 @@ def main():
     paypay = ini_paypay
     nisa_principal = ini_nisa 
 
-    NISA_TSUMITATE_LIMIT = 1200000
-    NISA_GROWTH_LIMIT = 2400000
-    NISA_LIFETIME_LIMIT = 18000000
+    # ★定数
+    NISA_TSUMITATE_LIMIT = 1200000 # 年120万
+    NISA_GROWTH_LIMIT = 2400000    # 年240万
+    NISA_LIFETIME_LIMIT = 18000000 # 生涯1800万
 
     records.append({
         "Age": current_age,
@@ -236,10 +224,13 @@ def main():
         "401k": int(k401),
         "NISA": int(nisa),
         "NISA元本": int(nisa_principal),
-        "Other": int(paypay)
+        "Other": int(paypay),
+        "NISA積立枠": 0, # 初期値
+        "NISA成長枠": 0  # 初期値
     })
 
     for age in range(current_age + 1, end_age + 1):
+        
         # 1. 運用
         cash *= (1 + r_cash)
         nisa *= (1 + r_nisa)
@@ -274,10 +265,14 @@ def main():
         else:
             current_cost = base_monthly_cost * 12
 
-        # 4. 積立
+        # 4. 積立 (つみたて投資枠)
         val_k401_add = k401_monthly * 12 if (is_working and age < age_401k_get) else 0
         
-        # ★修正済み: 働いているなら、現金がマイナスでも(天引き感覚で)積立可
+        # ★記録用変数リセット
+        nisa_tsumitate_year = 0
+        nisa_growth_year = 0
+
+        # 積立 (cash > 0 or working)
         can_invest = (cash > 0 or is_working)
 
         val_nisa_add = 0
@@ -285,6 +280,8 @@ def main():
             raw_nisa_add = nisa_monthly * 12
             lifetime_room = max(0, NISA_LIFETIME_LIMIT - nisa_principal)
             val_nisa_add = min(raw_nisa_add, NISA_TSUMITATE_LIMIT, lifetime_room)
+            
+            nisa_tsumitate_year = val_nisa_add # 記録
         
         val_paypay_add = paypay_monthly * 12 if (can_invest and age <= paypay_stop_age) else 0
 
@@ -346,7 +343,7 @@ def main():
             
             cash = -shortage
 
-        # 10. ダム機能
+        # 10. ダム機能 (成長投資枠)
         if age < 50: target = dam_1
         elif age < 60: target = dam_2
         else: target = dam_3
@@ -359,6 +356,8 @@ def main():
             cash -= move
             nisa += move
             nisa_principal += move
+            
+            nisa_growth_year = move # 記録
 
         records.append({
             "Age": age,
@@ -367,7 +366,9 @@ def main():
             "401k": int(k401),
             "NISA": int(nisa),
             "NISA元本": int(nisa_principal),
-            "Other": int(paypay)
+            "Other": int(paypay),
+            "NISA積立枠": int(nisa_tsumitate_year), # ★追加
+            "NISA成長枠": int(nisa_growth_year)     # ★追加
         })
 
     # --- 結果表示 ---
