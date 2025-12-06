@@ -61,9 +61,25 @@ def main():
         load_settings()
         st.session_state["first_load_done"] = True
 
-    # タイトル
-    st.title("💰 簡易資産シミュレータ v2.8")
-    st.caption("Ver. Layout Optimization")
+    # ★CSS注入: Noto Sans JP を適用
+    st.markdown("""
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
+        
+        html, body, [class*="st-"] {
+            font-family: 'Noto Sans JP', sans-serif !important;
+        }
+        
+        /* タイトルなどを少し調整 */
+        h3 {
+            font-weight: 700 !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # ★タイトルを小さく (h3相当)
+    st.markdown("### 💰 簡易資産シミュレータ v2.9")
+    st.caption("Ver. Noto Sans JP & Clean UI")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -326,13 +342,10 @@ def main():
             "Other": int(paypay)
         })
 
-    # --- 結果表示 (レイアウト変更後) ---
+    # --- 結果表示 ---
     df = pd.DataFrame(records)
 
-    st.markdown("### 📊 資産推移シミュレーション")
-
-    # 1. グラフ描画 (ボタンの状態をSession Stateから取得)
-    # デフォルトは積み上げ
+    # 1. グラフ描画
     if "graph_mode" not in st.session_state:
         st.session_state["graph_mode"] = "積み上げ (総資産)"
     
@@ -344,18 +357,17 @@ def main():
     if current_mode == "積み上げ (総資産)":
         fig = px.area(df_melt, x="Age", y="Amount", color="Asset", 
                       labels={"Amount": "金額 (円)", "Age": "年齢"}, 
-                      color_discrete_map=colors, title="総資産の推移 (積み上げ)")
+                      color_discrete_map=colors)
     else:
         fig = px.line(df_melt, x="Age", y="Amount", color="Asset", 
                       labels={"Amount": "金額 (円)", "Age": "年齢"}, 
-                      color_discrete_map=colors, title="各資産の推移 (折れ線)")
+                      color_discrete_map=colors)
     
     fig.update_layout(hovermode="x unified")
     st.plotly_chart(fig, use_container_width=True)
 
     # 2. スライダー & 数値チェック
     st.markdown("---")
-    st.markdown("### 🔎 時点データチェック")
     target_age = st.slider("確認したい年齢", current_age, end_age, 65)
     try:
         row = df[df["Age"] == target_age].iloc[0]
@@ -369,7 +381,7 @@ def main():
 
     st.markdown("---")
 
-    # 3. グラフ表示モード切替 (下部に配置)
+    # 3. グラフ表示モード切替
     st.radio("グラフ表示モード", ["積み上げ (総資産)", "折れ線 (個別推移)"], 
              key="graph_mode", horizontal=True)
 
@@ -379,7 +391,7 @@ def main():
     with st.expander("📝 年単位の資産明細を表示", expanded=True):
         st.dataframe(df, use_container_width=True)
 
-    # 5. ルール説明 (最下部へ移動)
+    # 5. ルール説明 (最下部へ)
     st.markdown("---")
     with st.expander("ℹ️ このシミュレータのルール（クリックで開く）"):
         st.markdown("""
