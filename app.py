@@ -294,8 +294,6 @@ def main():
         st.error(f"⚠️ {end_age}歳時点で資金が枯渇しています！")
     else:
         st.success(f"🎉 {end_age}歳まで資産寿命が持ちました！")
-    
-    st.balloons()
 
 if __name__ == '__main__':
     main()
