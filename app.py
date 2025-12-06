@@ -4,9 +4,6 @@ import plotly.express as px
 import json
 import os
 
-# --- 設定保存用ファイル名 ---
-CONFIG_FILE = "asset_config_v2.json"
-
 # --- デフォルト設定値 ---
 DEFAULT_CONFIG = {
     "current_age": 33, "end_age": 100,
@@ -31,29 +28,32 @@ DEFAULT_CONFIG = {
 }
 
 def load_settings():
-    config = DEFAULT_CONFIG.copy()
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                saved_config = json.load(f)
-                config.update(saved_config)
-        except Exception as e:
-            st.error(f"設定読み込みエラー: {e}")
-    for key, value in config.items():
+    for key, value in DEFAULT_CONFIG.items():
         if key not in st.session_state:
             st.session_state[key] = value
 
-def save_settings():
-    save_data = {}
-    for key in DEFAULT_CONFIG.keys():
-        if key in st.session_state:
-            save_data[key] = st.session_state[key]
-    try:
-        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-            json.dump(save_data, f, indent=4, ensure_ascii=False)
-        st.sidebar.success(f"✅ 設定を保存しました！\n(保存先: {CONFIG_FILE})")
-    except Exception as e:
-        st.sidebar.error(f"保存失敗: {e}")
+def download_settings():
+    save_data = {key: st.session_state[key] for key in DEFAULT_CONFIG.keys()}
+    json_str = json.dumps(save_data, ensure_ascii=False, indent=4)
+    st.download_button(
+        label="💾 設定をダウンロード",
+        data=json_str,
+        file_name="asset_settings.json",
+        mime="application/json"
+    )
+
+def upload_settings():
+    uploaded = st.file_uploader("📤 設定ファイル (JSON) をアップロード", type=["json"])
+
+    if uploaded is not None:
+        try:
+            data = json.load(uploaded)
+            for key in DEFAULT_CONFIG.keys():
+                if key in data:
+                    st.session_state[key] = data[key]
+            st.success("✅ 設定を読み込みました！")
+        except Exception as e:
+            st.error(f"設定ファイルが不正です: {e}")
 
 st.set_page_config(page_title="簡易資産シミュレータ", page_icon="💰", layout="wide")
 
@@ -79,8 +79,11 @@ def main():
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
-    if st.sidebar.button("💾 設定をPCに保存"):
-        save_settings()
+    st.sidebar.subheader("📁 設定ファイル")
+    download_settings()
+    upload_settings()
+    st.sidebar.markdown("---")
+
 
     tab1, tab2, tab3, tab4, tab5 = st.sidebar.tabs(["基本・初期", "収入・支出", "積立設定", "取崩し戦略", "臨時収支"])
 
