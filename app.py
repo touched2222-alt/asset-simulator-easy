@@ -17,8 +17,8 @@ DEFAULT_CONFIG = {
     "age_401k_get": 65, "tax_401k": 12.0, "age_pension": 70, "pension_monthly": 200000, "tax_pension": 15.0,
     "cost_20s": 20, "cost_30s": 25, "cost_40s": 30, "cost_50s": 30, "cost_60s": 25,
     "exp_20s": 50, "exp_30s": 100, "exp_40s": 150, "exp_50s": 100, "exp_60s": 50,
-    "nisa_monthly": 50000, "nisa_stop_age": 65,
-    "paypay_monthly": 10000, "paypay_stop_age": 65,
+    "nisa_monthly": 50000, "nisa_stop_age": 70, # デフォルトを少し伸ばしました
+    "paypay_monthly": 10000, "paypay_stop_age": 70,
     "k401_monthly": 20000,
     "dam_1": 500, "dam_2": 700, "dam_3": 300,
     "priority": "新NISAから先に使う",
@@ -61,25 +61,20 @@ def main():
         load_settings()
         st.session_state["first_load_done"] = True
 
-    # ★CSS注入: Noto Sans JP を適用
+    # CSS注入
     st.markdown("""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
-        
         html, body, [class*="st-"] {
             font-family: 'Noto Sans JP', sans-serif !important;
         }
-        
-        /* タイトルなどを少し調整 */
-        h3 {
-            font-weight: 700 !important;
-        }
+        h3 { font-weight: 700 !important; }
+        .streamlit-expanderHeader { margin-top: 10px; }
         </style>
     """, unsafe_allow_html=True)
 
-    # ★タイトルを小さく (h3相当)
-    st.markdown("### 💰 簡易資産シミュレータ v2.9")
-    st.caption("Ver. Noto Sans JP & Clean UI")
+    st.markdown("### 💰 簡易資産シミュレータ v2.11")
+    st.caption("Ver. Contribution Logic Fixed (Decoupled from Work)")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -139,6 +134,7 @@ def main():
 
     with tab3:
         st.subheader("🌱 積立投資の設定")
+        st.caption("※NISAと他運用は、働く期間に関わらず「設定した年齢」まで積立を続けます。")
         col_t1, col_t2 = st.columns(2)
         with col_t1:
             nisa_monthly = st.number_input("NISA積立(月/円)", 0, 300000, step=1000, key="nisa_monthly")
@@ -146,7 +142,10 @@ def main():
         with col_t2:
             paypay_monthly = st.number_input("他運用積立(月/円)", 0, 1000000, step=1000, key="paypay_monthly")
             paypay_stop_age = st.number_input("他運用積立終了年齢", 20, 100, key="paypay_stop_age")
+        
+        st.write("※401kは「働く期間」かつ「受取年齢の前」まで積立を行います。")
         k401_monthly = st.number_input("401k積立(月/円)", 0, 500000, step=1000, key="k401_monthly")
+        
         st.markdown("---")
         st.subheader("💧 最低貯蓄額 (ダム水位)")
         dam_1 = st.number_input("〜49歳 最低貯蓄(万)", 0, 10000, step=50, key="dam_1") * 10000
@@ -251,13 +250,15 @@ def main():
             current_cost = base_monthly_cost * 12
 
         # 4. 積立
+        # ★修正: 401kだけは「働く期間」に依存
         val_k401_add = k401_monthly * 12 if (is_working and age < age_401k_get) else 0
         
-        raw_nisa_add = nisa_monthly * 12 if (is_working and age <= nisa_stop_age) else 0
+        # ★修正: NISA/他運用は「設定年齢」まで継続 (退職しても続ける)
+        raw_nisa_add = nisa_monthly * 12 if (age <= nisa_stop_age) else 0
         lifetime_room = max(0, NISA_LIFETIME_LIMIT - nisa_principal)
         val_nisa_add = min(raw_nisa_add, NISA_ANNUAL_LIMIT, lifetime_room)
         
-        val_paypay_add = paypay_monthly * 12 if (is_working and age <= paypay_stop_age) else 0
+        val_paypay_add = paypay_monthly * 12 if (age <= paypay_stop_age) else 0
 
         # 5. 資産移動
         k401 += val_k401_add
@@ -317,12 +318,13 @@ def main():
             
             cash = -shortage
 
-        # 10. ダム機能
+        # 10. ダム機能 (★修正: 積立終了年齢チェックを追加)
         if age < 50: target = dam_1
         elif age < 60: target = dam_2
         else: target = dam_3
 
-        if cash > target:
+        # ダム余剰金の投資: 現金があり、かつ「設定年齢以下」の場合のみ投資する
+        if cash > target and age <= nisa_stop_age:
             surplus = cash - target
             lifetime_room = max(0, NISA_LIFETIME_LIMIT - nisa_principal)
             annual_remaining = max(0, NISA_ANNUAL_LIMIT - val_nisa_add)
@@ -345,10 +347,9 @@ def main():
     # --- 結果表示 ---
     df = pd.DataFrame(records)
 
-    # 1. グラフ描画
+    # 1. グラフ
     if "graph_mode" not in st.session_state:
         st.session_state["graph_mode"] = "積み上げ (総資産)"
-    
     current_mode = st.session_state["graph_mode"]
 
     df_melt = df.melt(id_vars=["Age"], value_vars=["Cash", "401k", "NISA", "Other"], var_name="Asset", value_name="Amount")
@@ -366,8 +367,8 @@ def main():
     fig.update_layout(hovermode="x unified")
     st.plotly_chart(fig, use_container_width=True)
 
-    # 2. スライダー & 数値チェック
-    st.markdown("---")
+    # 2. スライダー
+    st.markdown("<br>", unsafe_allow_html=True)
     target_age = st.slider("確認したい年齢", current_age, end_age, 65)
     try:
         row = df[df["Age"] == target_age].iloc[0]
@@ -379,20 +380,18 @@ def main():
         c5.metric("うち他運用", f"{row['Other']/10000:,.0f}万円")
     except: st.error("データ取得エラー")
 
-    st.markdown("---")
-
-    # 3. グラフ表示モード切替
+    # 3. グラフ切替ボタン
+    st.markdown("<br>", unsafe_allow_html=True)
     st.radio("グラフ表示モード", ["積み上げ (総資産)", "折れ線 (個別推移)"], 
              key="graph_mode", horizontal=True)
 
-    st.markdown("---")
-
-    # 4. 明細データ
+    # 4. 明細
+    st.markdown("<br>", unsafe_allow_html=True)
     with st.expander("📝 年単位の資産明細を表示", expanded=True):
         st.dataframe(df, use_container_width=True)
 
-    # 5. ルール説明 (最下部へ)
-    st.markdown("---")
+    # 5. ルール
+    st.markdown("<br>", unsafe_allow_html=True)
     with st.expander("ℹ️ このシミュレータのルール（クリックで開く）"):
         st.markdown("""
         1.  **収入はすべて「現金」へ**：給与・年金・臨時収入はまず現金貯金に入ります。
