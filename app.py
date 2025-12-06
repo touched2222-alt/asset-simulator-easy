@@ -9,24 +9,25 @@ CONFIG_FILE = "asset_config_v2.json"
 
 # --- デフォルト設定値 ---
 DEFAULT_CONFIG = {
-    "current_age": 48, "end_age": 100,
-    "ini_cash": 500, "ini_401k": 500, "ini_nisa": 100, "ini_paypay": 10,
-    "r_cash": 0.01, "r_401k": 5.0, "r_nisa": 5.0, "r_paypay": 6.0, "inflation": 2.0,
-    "age_work_last": 65,
+    "current_age": 33, "end_age": 100,
+    "ini_cash": 200, "ini_401k": 300, "ini_nisa": 100, "ini_paypay": 10,
+    "r_cash": 0.30, "r_401k": 5.0, "r_nisa": 5.0, "r_paypay": 6.0, "inflation": 2.0,
+    "age_work_last": 64,
     "inc_20s": 300, "inc_30s": 400, "inc_40s": 500, "inc_50s": 600, "inc_60s": 400,
-    "age_401k_get": 65, "tax_401k": 12.0, "age_pension": 70, "pension_monthly": 200000, "tax_pension": 15.0,
+    "age_401k_get": 65, "tax_401k": 12.0, "age_pension": 65, "pension_monthly": 200000, "tax_pension": 15.0,
     "cost_20s": 20, "cost_30s": 25, "cost_40s": 30, "cost_50s": 30, "cost_60s": 25,
     "exp_20s": 50, "exp_30s": 100, "exp_40s": 150, "exp_50s": 100, "exp_60s": 50,
-    "nisa_monthly": 50000, "nisa_stop_age": 70,
-    "paypay_monthly": 10000, "paypay_stop_age": 70,
-    "k401_monthly": 20000,
-    "dam_1": 500, "dam_2": 700, "dam_3": 300,
+    "nisa_monthly": 50000,
+    "nisa_stop_age": 65,
+    "paypay_monthly": 300, "paypay_stop_age": 70,
+    "k401_monthly": 55000,
+    "dam_1": 700, "dam_2": 700, "dam_3": 500,
     "priority": "新NISAから先に使う",
-    "nisa_start_age": 60, "paypay_start_age": 60,
+    "nisa_start_age": 65, "paypay_start_age": 60,
     "withdraw_limit_nisa": 0, 
-    "withdraw_limit_other": 0,
-    "inc1_a": 0, "inc1_v": 0, "inc2_a": 0, "inc2_v": 0, "inc3_a": 0, "inc3_v": 0,
-    "dec1_a": 65, "dec1_v": 300, "dec2_a": 0, "dec2_v": 0, "dec3_a": 0, "dec3_v": 0
+    "withdraw_limit_other": 20,
+    "inc1_a": 55, "inc1_v": 500, "inc2_a": 0, "inc2_v": 0, "inc3_a": 0, "inc3_v": 0,
+    "dec1_a": 66, "dec1_v": 1000, "dec2_a": 0, "dec2_v": 0, "dec3_a": 0, "dec3_v": 0
 }
 
 def load_settings():
@@ -61,35 +62,20 @@ def main():
         load_settings()
         st.session_state["first_load_done"] = True
 
-    # CSS注入 (アイコンフォントを壊さないように修正)
     st.markdown("""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
-        
-        /* 全体のフォント設定 (アイコンクラスは除外されるように調整) */
         html, body, p, h1, h2, h3, h4, h5, h6, li, span, div.stDataFrame {
             font-family: 'Noto Sans JP', sans-serif;
         }
-        
-        /* 見出しを太字に */
         h3 { font-weight: 700 !important; }
-
-        /* Expanderのヘッダー間隔調整 */
-        .streamlit-expanderHeader {
-            margin-top: 0.5rem;
-            margin-bottom: 0.5rem;
-            font-family: 'Noto Sans JP', sans-serif; /* ヘッダー文字にも適用 */
-        }
-        
-        /* アイコンが文字化けしないように、material-iconsクラスにはフォントを強制しない */
-        .material-icons {
-            font-family: 'Material Icons' !important;
-        }
+        .streamlit-expanderHeader { margin-top: 0.5rem; margin-bottom: 0.5rem; font-family: 'Noto Sans JP', sans-serif; }
+        .material-icons { font-family: 'Material Icons' !important; }
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 💰 簡易資産シミュレータ v2.12")
-    st.caption("Ver. Fix Icon Font & Layout")
+    st.markdown("### 💰 簡易資産シミュレータ v2.15")
+    st.caption("Ver. Distinct Quotas (Tsumitate 1.2M / Growth 2.4M)")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -149,20 +135,31 @@ def main():
 
     with tab3:
         st.subheader("🌱 積立投資の設定")
-        st.caption("※NISAと他運用は、働く期間に関わらず「設定した年齢」まで積立を続けます。")
         col_t1, col_t2 = st.columns(2)
         with col_t1:
-            nisa_monthly = st.number_input("NISA積立(月/円)", 0, 300000, step=1000, key="nisa_monthly")
+            st.markdown("**1. NISA つみたて投資枠**")
+            nisa_monthly = st.number_input("月額積立(円)", 0, 500000, step=1000, key="nisa_monthly", help="ここは年間120万円が上限として計算されます")
+            
+            nisa_year_val = nisa_monthly * 12
+            if nisa_year_val <= 1200000:
+                st.info(f"✅ 年間 {nisa_year_val/10000:.0f}万 / 120万")
+            else:
+                st.warning(f"⚠️ 年間120万を超えています。シミュレーション上は120万として計算します。")
+
             nisa_stop_age = st.number_input("NISA積立終了年齢", 20, 100, key="nisa_stop_age")
         with col_t2:
+            st.markdown("**2. 他運用 (特定口座など)**")
             paypay_monthly = st.number_input("他運用積立(月/円)", 0, 1000000, step=1000, key="paypay_monthly")
+            st.write(f"(年間 {paypay_monthly*12/10000:.0f}万円)")
             paypay_stop_age = st.number_input("他運用積立終了年齢", 20, 100, key="paypay_stop_age")
         
+        st.markdown("---")
         st.write("※401kは「働く期間」かつ「受取年齢の前」まで積立を行います。")
         k401_monthly = st.number_input("401k積立(月/円)", 0, 500000, step=1000, key="k401_monthly")
         
         st.markdown("---")
         st.subheader("💧 最低貯蓄額 (ダム水位)")
+        st.caption("最低貯蓄額を超えた余剰金は、**「NISA 成長投資枠 (最大年240万)」** を埋めるために自動投資されます。")
         dam_1 = st.number_input("〜49歳 最低貯蓄(万)", 0, 10000, step=50, key="dam_1") * 10000
         dam_2 = st.number_input("50代 最低貯蓄(万)", 0, 10000, step=50, key="dam_2") * 10000
         dam_3 = st.number_input("60歳〜 最低貯蓄(万)", 0, 10000, step=50, key="dam_3") * 10000
@@ -215,8 +212,10 @@ def main():
     paypay = ini_paypay
     nisa_principal = ini_nisa 
 
-    NISA_ANNUAL_LIMIT = 3600000
-    NISA_LIFETIME_LIMIT = 18000000
+    # ★定数: 枠を明確に定義
+    NISA_TSUMITATE_LIMIT = 1200000 # 年120万
+    NISA_GROWTH_LIMIT = 2400000    # 年240万
+    NISA_LIFETIME_LIMIT = 18000000 # 生涯1800万
 
     records.append({
         "Age": current_age,
@@ -264,14 +263,18 @@ def main():
         else:
             current_cost = base_monthly_cost * 12
 
-        # 4. 積立
+        # 4. 積立 (つみたて投資枠)
         val_k401_add = k401_monthly * 12 if (is_working and age < age_401k_get) else 0
         
-        raw_nisa_add = nisa_monthly * 12 if (age <= nisa_stop_age) else 0
-        lifetime_room = max(0, NISA_LIFETIME_LIMIT - nisa_principal)
-        val_nisa_add = min(raw_nisa_add, NISA_ANNUAL_LIMIT, lifetime_room)
+        # ★修正: 積立設定は「つみたて投資枠(120万)」を埋めるためのもの
+        val_nisa_add = 0
+        if cash > 0 and age <= nisa_stop_age:
+            raw_nisa_add = nisa_monthly * 12
+            # 120万と生涯枠残高の小さい方でキャップ
+            lifetime_room = max(0, NISA_LIFETIME_LIMIT - nisa_principal)
+            val_nisa_add = min(raw_nisa_add, NISA_TSUMITATE_LIMIT, lifetime_room)
         
-        val_paypay_add = paypay_monthly * 12 if (age <= paypay_stop_age) else 0
+        val_paypay_add = paypay_monthly * 12 if (cash > 0 and age <= paypay_stop_age) else 0
 
         # 5. 資産移動
         k401 += val_k401_add
@@ -300,7 +303,7 @@ def main():
         cash_flow = (salary + pension + event_inc) - (current_cost + annual_extra_exp + event_dec + val_k401_add + val_nisa_add + val_paypay_add)
         cash += cash_flow
 
-        # 9. 補填 (リレーロジック)
+        # 9. 補填
         if cash < 0:
             shortage = abs(cash)
             
@@ -331,16 +334,21 @@ def main():
             
             cash = -shortage
 
-        # 10. ダム機能
+        # 10. ダム機能 (成長投資枠)
         if age < 50: target = dam_1
         elif age < 60: target = dam_2
         else: target = dam_3
 
+        # ★修正: ダムからの放流は「成長投資枠(240万)」を使う
         if cash > target and age <= nisa_stop_age:
             surplus = cash - target
+            
             lifetime_room = max(0, NISA_LIFETIME_LIMIT - nisa_principal)
-            annual_remaining = max(0, NISA_ANNUAL_LIMIT - val_nisa_add)
-            move = min(surplus, annual_remaining, lifetime_room)
+            
+            # つみたて枠(Step4)ですでに使った分は考慮不要（枠が別だから）。
+            # ただし生涯枠(1800万)は共通なので、残りをチェック。
+            
+            move = min(surplus, NISA_GROWTH_LIMIT, lifetime_room)
             
             cash -= move
             nisa += move
@@ -359,7 +367,6 @@ def main():
     # --- 結果表示 ---
     df = pd.DataFrame(records)
 
-    # 1. グラフ
     if "graph_mode" not in st.session_state:
         st.session_state["graph_mode"] = "積み上げ (総資産)"
     current_mode = st.session_state["graph_mode"]
@@ -379,7 +386,6 @@ def main():
     fig.update_layout(hovermode="x unified")
     st.plotly_chart(fig, use_container_width=True)
 
-    # 2. スライダー
     st.markdown("<br>", unsafe_allow_html=True)
     target_age = st.slider("確認したい年齢", current_age, end_age, 65)
     try:
@@ -392,25 +398,23 @@ def main():
         c5.metric("うち他運用", f"{row['Other']/10000:,.0f}万円")
     except: st.error("データ取得エラー")
 
-    # 3. グラフ切替ボタン
     st.markdown("<br>", unsafe_allow_html=True)
     st.radio("グラフ表示モード", ["積み上げ (総資産)", "折れ線 (個別推移)"], 
              key="graph_mode", horizontal=True)
 
-    # 4. 明細
     st.markdown("<br>", unsafe_allow_html=True)
     with st.expander("📝 年単位の資産明細を表示", expanded=True):
         st.dataframe(df, use_container_width=True)
 
-    # 5. ルール
     st.markdown("<br>", unsafe_allow_html=True)
     with st.expander("ℹ️ このシミュレータのルール（クリックで開く）"):
         st.markdown("""
         1.  **収入はすべて「現金」へ**：給与・年金・臨時収入はまず現金貯金に入ります。
         2.  **年金の手取り**：入力した年金月額から、設定した税率（社会保険料含む）を引いた額が収入となります。
-        3.  **現金余剰は「新NISA」へ**：最低貯蓄額を超えた分は自動投資されます（**年間360万かつ生涯1800万まで**）。
-        4.  **現金不足時の「取り崩し」**：現金がマイナスになった場合、設定した優先順位に従って補填します。
-        5.  **取り崩し上限**：各資産に設定した年間上限額までしか取り崩しません。足りない分は赤字（借金）になります。
+        3.  **つみたて枠（年120万）**：「NISA積立」で設定した金額が優先的に充てられます。
+        4.  **成長枠（年240万）**：「最低貯蓄額」を超えた余剰金が、この枠を使って自動投資されます。
+        5.  **現金不足時の「取り崩し」**：現金がマイナスになった場合、設定した優先順位に従って補填します。
+        6.  **積立停止**：現金がマイナス（借金）の年は、新規の積立投資を行いません。
         """)
 
 if __name__ == '__main__':
