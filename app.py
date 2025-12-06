@@ -59,13 +59,20 @@ def get_download_json():
 # --- メインアプリ ---
 st.set_page_config(page_title="簡易資産シミュレータ", page_icon="💰", layout="wide")
 
+# app.py, line 105 (def main(): の直後)
+
 def main():
-    # アプリ起動時にデフォルト設定値をst.session_stateにロード
-    if "first_load_done" not in st.session_state:
+    # ----------------------------------------------------
+    # ★ 既存のセッションステート初期化ロジックを、以下のように簡略化します
+    if "is_initialized" not in st.session_state:
+        # DEFAULT_CONFIGの内容を、st.session_stateにコピーして初期化
         for key, value in DEFAULT_CONFIG.items():
-            if key not in st.session_state:
-                st.session_state[key] = value
-        st.session_state["first_load_done"] = True
+            st.session_state[key] = value
+        st.session_state["is_initialized"] = True
+    # ----------------------------------------------------
+    
+    # --- スタイル設定 ---
+    st.markdown("""
     
     # --- スタイル設定 ---
     st.markdown("""
