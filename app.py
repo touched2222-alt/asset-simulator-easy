@@ -44,7 +44,7 @@ def main():
 
     with tab2: # 収入・支出
         st.subheader("🏢 働き方と収入")
-        age_work_last = st.number_input("何歳まで働く？", 50, 90, 65)
+        age_work_last = st.number_input("何歳まで働く？（普通は64歳が多い）", 50, 90, 65)
         
         st.markdown("##### 手取り年収 (万円)")
         inc_20s = st.number_input("〜29歳", 0, 5000, 300, step=10) * 10000
