@@ -17,7 +17,7 @@ DEFAULT_CONFIG = {
     "age_401k_get": 65, "tax_401k": 12.0, "age_pension": 70, "pension_monthly": 200000, "tax_pension": 15.0,
     "cost_20s": 20, "cost_30s": 25, "cost_40s": 30, "cost_50s": 30, "cost_60s": 25,
     "exp_20s": 50, "exp_30s": 100, "exp_40s": 150, "exp_50s": 100, "exp_60s": 50,
-    "nisa_monthly": 50000, "nisa_stop_age": 70, # デフォルトを少し伸ばしました
+    "nisa_monthly": 50000, "nisa_stop_age": 70,
     "paypay_monthly": 10000, "paypay_stop_age": 70,
     "k401_monthly": 20000,
     "dam_1": 500, "dam_2": 700, "dam_3": 300,
@@ -61,20 +61,35 @@ def main():
         load_settings()
         st.session_state["first_load_done"] = True
 
-    # CSS注入
+    # CSS注入 (アイコンフォントを壊さないように修正)
     st.markdown("""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
-        html, body, [class*="st-"] {
-            font-family: 'Noto Sans JP', sans-serif !important;
+        
+        /* 全体のフォント設定 (アイコンクラスは除外されるように調整) */
+        html, body, p, h1, h2, h3, h4, h5, h6, li, span, div.stDataFrame {
+            font-family: 'Noto Sans JP', sans-serif;
         }
+        
+        /* 見出しを太字に */
         h3 { font-weight: 700 !important; }
-        .streamlit-expanderHeader { margin-top: 10px; }
+
+        /* Expanderのヘッダー間隔調整 */
+        .streamlit-expanderHeader {
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-family: 'Noto Sans JP', sans-serif; /* ヘッダー文字にも適用 */
+        }
+        
+        /* アイコンが文字化けしないように、material-iconsクラスにはフォントを強制しない */
+        .material-icons {
+            font-family: 'Material Icons' !important;
+        }
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 💰 簡易資産シミュレータ v2.11")
-    st.caption("Ver. Contribution Logic Fixed (Decoupled from Work)")
+    st.markdown("### 💰 簡易資産シミュレータ v2.12")
+    st.caption("Ver. Fix Icon Font & Layout")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -250,10 +265,8 @@ def main():
             current_cost = base_monthly_cost * 12
 
         # 4. 積立
-        # ★修正: 401kだけは「働く期間」に依存
         val_k401_add = k401_monthly * 12 if (is_working and age < age_401k_get) else 0
         
-        # ★修正: NISA/他運用は「設定年齢」まで継続 (退職しても続ける)
         raw_nisa_add = nisa_monthly * 12 if (age <= nisa_stop_age) else 0
         lifetime_room = max(0, NISA_LIFETIME_LIMIT - nisa_principal)
         val_nisa_add = min(raw_nisa_add, NISA_ANNUAL_LIMIT, lifetime_room)
@@ -318,12 +331,11 @@ def main():
             
             cash = -shortage
 
-        # 10. ダム機能 (★修正: 積立終了年齢チェックを追加)
+        # 10. ダム機能
         if age < 50: target = dam_1
         elif age < 60: target = dam_2
         else: target = dam_3
 
-        # ダム余剰金の投資: 現金があり、かつ「設定年齢以下」の場合のみ投資する
         if cash > target and age <= nisa_stop_age:
             surplus = cash - target
             lifetime_room = max(0, NISA_LIFETIME_LIMIT - nisa_principal)
