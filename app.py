@@ -23,7 +23,9 @@ DEFAULT_CONFIG = {
     "dam_1": 500, "dam_2": 700, "dam_3": 300,
     "priority": "新NISAから先に使う",
     "nisa_start_age": 60, "paypay_start_age": 60,
-    "withdraw_limit": 0,
+    # ★変更: 上限を別々に定義
+    "withdraw_limit_nisa": 0, 
+    "withdraw_limit_other": 0,
     "inc1_a": 0, "inc1_v": 0, "inc2_a": 0, "inc2_v": 0, "inc3_a": 0, "inc3_v": 0,
     "dec1_a": 65, "dec1_v": 300, "dec2_a": 0, "dec2_v": 0, "dec3_a": 0, "dec3_v": 0
 }
@@ -60,16 +62,17 @@ def main():
         load_settings()
         st.session_state["first_load_done"] = True
 
-    st.title("💰 簡易資産シミュレータ v2.4")
-    st.caption("Ver. NISA Lifetime Limit (1800万)")
+    st.title("💰 簡易資産シミュレータ v2.5")
+    st.caption("Ver. Separate Withdrawal Limits")
 
     with st.expander("ℹ️ このシミュレータのルール（クリックで開く）"):
         st.markdown("""
         1.  **収入はすべて「現金」へ**：給与・年金・臨時収入はまず現金貯金に入ります。
         2.  **年金の手取り**：入力した年金月額から、設定した税率（社会保険料含む）を引いた額が収入となります。
         3.  **現金余剰は「新NISA」へ**：最低貯蓄額を超えた分は自動投資されます（**年間360万かつ生涯1800万まで**）。
-        4.  **現金不足時の「取り崩し」**：現金がマイナスになった場合、設定した「解禁年齢」と「優先順位」に従って、資産を取り崩して補填します。
-        5.  **取り崩し上限**：年間上限額を設定した場合、それ以上は資産を売却せず、現金不足（赤字）として残ります。
+        4.  **現金不足時の「取り崩し」**：現金がマイナスになった場合、設定した優先順位に従って補填します。
+            * 優先順位1位の資産で足りない（または上限に達した）場合、優先順位2位の資産からさらに取り崩します。
+            * 両方の上限に達しても足りない場合は「現金マイナス（赤字）」となります。
         """)
 
     # --- サイドバー設定 ---
@@ -153,7 +156,14 @@ def main():
         with col_out2:
             paypay_start_age = st.number_input("他運用 解禁年齢", 50, 100, key="paypay_start_age")
         st.markdown("---")
-        withdraw_limit = st.number_input("年間取り崩し上限額(万円)", 0, 5000, step=10, key="withdraw_limit", help="0で無制限") * 10000
+        
+        # ★変更: 個別の上限設定
+        st.write("▼ 年間取り崩し上限 (0は無制限)")
+        c_lim1, c_lim2 = st.columns(2)
+        with c_lim1:
+            withdraw_limit_nisa = st.number_input("新NISA 上限(万円)", 0, 5000, step=10, key="withdraw_limit_nisa") * 10000
+        with c_lim2:
+            withdraw_limit_other = st.number_input("他運用 上限(万円)", 0, 5000, step=10, key="withdraw_limit_other") * 10000
 
     with tab5:
         st.subheader("💰 臨時収入 (3枠)")
@@ -188,7 +198,7 @@ def main():
     nisa_principal = ini_nisa 
 
     NISA_ANNUAL_LIMIT = 3600000
-    NISA_LIFETIME_LIMIT = 18000000 # ★追加: 1800万上限
+    NISA_LIFETIME_LIMIT = 18000000
 
     records.append({
         "Age": current_age,
@@ -239,13 +249,8 @@ def main():
         # 4. 積立
         val_k401_add = k401_monthly * 12 if (is_working and age < age_401k_get) else 0
         
-        # ★修正: 積立上限チェック (年間360万 AND 生涯1800万)
         raw_nisa_add = nisa_monthly * 12 if (is_working and age <= nisa_stop_age) else 0
-        
-        # あといくら生涯枠が空いているか
         lifetime_room = max(0, NISA_LIFETIME_LIMIT - nisa_principal)
-        
-        # 年間上限と生涯余力を比較して小さい方を適用
         val_nisa_add = min(raw_nisa_add, NISA_ANNUAL_LIMIT, lifetime_room)
         
         val_paypay_add = paypay_monthly * 12 if (is_working and age <= paypay_stop_age) else 0
@@ -277,20 +282,18 @@ def main():
         cash_flow = (salary + pension + event_inc) - (current_cost + annual_extra_exp + event_dec + val_k401_add + val_nisa_add + val_paypay_add)
         cash += cash_flow
 
-        # 9. 補填
+        # 9. 補填 (リレーロジック)
         if cash < 0:
             shortage = abs(cash)
-            year_withdrawn_sum = 0
             
-            def withdraw_asset_logic(needed, current_val, principal_val, is_nisa):
-                nonlocal year_withdrawn_sum
-                limit_remain = float('inf')
-                if withdraw_limit > 0:
-                    limit_remain = max(0, withdraw_limit - year_withdrawn_sum)
+            # 汎用取り崩し関数
+            def withdraw_asset_logic(needed, current_val, principal_val, is_nisa, limit_setting):
+                # 0は無制限(inf)
+                actual_limit = float('inf') if limit_setting == 0 else limit_setting
                 
-                can_pay = min(needed, current_val, limit_remain)
+                can_pay = min(needed, current_val, actual_limit)
+                
                 new_val = current_val - can_pay
-                year_withdrawn_sum += can_pay
                 
                 new_principal = principal_val
                 if is_nisa and current_val > 0 and can_pay > 0:
@@ -300,37 +303,35 @@ def main():
                 return can_pay, new_val, new_principal
 
             if priority == "新NISAから先に使う":
+                # 1. NISA
                 if age >= nisa_start_age:
-                    pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True)
+                    pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True, withdraw_limit_nisa)
                     shortage -= pay_nisa
+                # 2. Other
                 if age >= paypay_start_age:
-                    pay_other, paypay, _ = withdraw_asset_logic(shortage, paypay, 0, False)
+                    pay_other, paypay, _ = withdraw_asset_logic(shortage, paypay, 0, False, withdraw_limit_other)
                     shortage -= pay_other
             else:
+                # 1. Other
                 if age >= paypay_start_age:
-                    pay_other, paypay, _ = withdraw_asset_logic(shortage, paypay, 0, False)
+                    pay_other, paypay, _ = withdraw_asset_logic(shortage, paypay, 0, False, withdraw_limit_other)
                     shortage -= pay_other
+                # 2. NISA
                 if age >= nisa_start_age:
-                    pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True)
+                    pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True, withdraw_limit_nisa)
                     shortage -= pay_nisa
             
             cash = -shortage
 
-        # 10. ダム機能 (余剰金投資)
+        # 10. ダム機能
         if age < 50: target = dam_1
         elif age < 60: target = dam_2
         else: target = dam_3
 
         if cash > target:
             surplus = cash - target
-            
-            # 生涯枠の再計算 (積立で増えている可能性があるため)
             lifetime_room = max(0, NISA_LIFETIME_LIMIT - nisa_principal)
-            
-            # 年間枠の残り
             annual_remaining = max(0, NISA_ANNUAL_LIMIT - val_nisa_add)
-            
-            # すべての条件で一番小さい額しか移動できない
             move = min(surplus, annual_remaining, lifetime_room)
             
             cash -= move
