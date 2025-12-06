@@ -23,7 +23,6 @@ DEFAULT_CONFIG = {
     "dam_1": 500, "dam_2": 700, "dam_3": 300,
     "priority": "新NISAから先に使う",
     "nisa_start_age": 60, "paypay_start_age": 60,
-    # ★変更: 上限を別々に定義
     "withdraw_limit_nisa": 0, 
     "withdraw_limit_other": 0,
     "inc1_a": 0, "inc1_v": 0, "inc2_a": 0, "inc2_v": 0, "inc3_a": 0, "inc3_v": 0,
@@ -62,8 +61,8 @@ def main():
         load_settings()
         st.session_state["first_load_done"] = True
 
-    st.title("💰 簡易資産シミュレータ v2.5")
-    st.caption("Ver. Separate Withdrawal Limits")
+    st.title("💰 簡易資産シミュレータ v2.6")
+    st.caption("Ver. Graph Type Selector Restored")
 
     with st.expander("ℹ️ このシミュレータのルール（クリックで開く）"):
         st.markdown("""
@@ -71,8 +70,7 @@ def main():
         2.  **年金の手取り**：入力した年金月額から、設定した税率（社会保険料含む）を引いた額が収入となります。
         3.  **現金余剰は「新NISA」へ**：最低貯蓄額を超えた分は自動投資されます（**年間360万かつ生涯1800万まで**）。
         4.  **現金不足時の「取り崩し」**：現金がマイナスになった場合、設定した優先順位に従って補填します。
-            * 優先順位1位の資産で足りない（または上限に達した）場合、優先順位2位の資産からさらに取り崩します。
-            * 両方の上限に達しても足りない場合は「現金マイナス（赤字）」となります。
+        5.  **取り崩し上限**：各資産に設定した年間上限額までしか取り崩しません。足りない分は赤字（借金）になります。
         """)
 
     # --- サイドバー設定 ---
@@ -157,7 +155,6 @@ def main():
             paypay_start_age = st.number_input("他運用 解禁年齢", 50, 100, key="paypay_start_age")
         st.markdown("---")
         
-        # ★変更: 個別の上限設定
         st.write("▼ 年間取り崩し上限 (0は無制限)")
         c_lim1, c_lim2 = st.columns(2)
         with c_lim1:
@@ -352,11 +349,23 @@ def main():
     df = pd.DataFrame(records)
 
     st.markdown("### 📊 資産推移シミュレーション")
+    
+    # ★変更: グラフ切り替え
+    graph_type = st.radio("グラフ表示モード", ["積み上げ (総資産)", "折れ線 (個別推移)"], horizontal=True)
+
     df_melt = df.melt(id_vars=["Age"], value_vars=["Cash", "401k", "NISA", "Other"], var_name="Asset", value_name="Amount")
     colors = {"Cash": "#636EFA", "NISA": "#EF553B", "401k": "#00CC96", "Other": "#AB63FA"}
-    fig = px.area(df_melt, x="Age", y="Amount", color="Asset", 
-                  labels={"Amount": "金額 (円)", "Age": "年齢"}, 
-                  color_discrete_map=colors, title="総資産の推移 (積み上げ)")
+    
+    if graph_type == "積み上げ (総資産)":
+        fig = px.area(df_melt, x="Age", y="Amount", color="Asset", 
+                      labels={"Amount": "金額 (円)", "Age": "年齢"}, 
+                      color_discrete_map=colors, title="総資産の推移 (積み上げ)")
+    else:
+        fig = px.line(df_melt, x="Age", y="Amount", color="Asset", 
+                      labels={"Amount": "金額 (円)", "Age": "年齢"}, 
+                      color_discrete_map=colors, title="各資産の推移 (折れ線)")
+    
+    fig.update_layout(hovermode="x unified") # ホバー時に全データを表示
     st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("### 🔎 時点データチェック")
