@@ -285,5 +285,7 @@ def main():
     with st.expander("📊 詳細データテーブル"):
         st.dataframe(df)
 
+    st.balloons()
+
 if __name__ == '__main__':
     main()
