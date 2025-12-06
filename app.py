@@ -265,3 +265,37 @@ def main():
             "NISA": int(nisa),
             "Other": int(paypay)
         })
+
+    # --- 結果表示 ---
+    df = pd.DataFrame(records)
+
+    st.markdown("### 📊 資産推移シミュレーション")
+    
+    # グラフ描画
+    df_melt = df.melt(id_vars=["Age"], value_vars=["Cash", "401k", "NISA", "Other"], var_name="Asset", value_name="Amount")
+    colors = {"Cash": "#636EFA", "NISA": "#EF553B", "401k": "#00CC96", "Other": "#AB63FA"}
+    
+    fig = px.area(df_melt, x="Age", y="Amount", color="Asset", 
+                  labels={"Amount": "金額 (円)", "Age": "年齢"}, 
+                  color_discrete_map=colors,
+                  title="総資産の推移 (積み上げ)")
+    st.plotly_chart(fig, use_container_width=True)
+
+    # 最終結果カード
+    last_row = df.iloc[-1]
+    st.markdown("### 🏁 最終結果")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("終了年齢", f"{end_age}歳")
+    c2.metric("総資産", f"{last_row['Total']/10000:,.0f}万円")
+    c3.metric("うち新NISA", f"{last_row['NISA']/10000:,.0f}万円")
+    
+    # 判定
+    if last_row['Total'] < 0:
+        st.error(f"⚠️ {end_age}歳時点で資金が枯渇しています！")
+    else:
+        st.success(f"🎉 {end_age}歳まで資産寿命が持ちました！")
+    
+    st.balloons()
+
+if __name__ == '__main__':
+    main()
