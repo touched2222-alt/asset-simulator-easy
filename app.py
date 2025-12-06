@@ -56,9 +56,9 @@ def main():
         st.markdown("---")
         st.subheader("🐢 年金・退職金")
         age_401k_get = st.number_input("401k受取年齢", 50, 80, 65)
-        tax_401k = st.number_input("401k受取税率(%)", 0.0, 50.0, 10.0, 0.1, format="%.1f") / 100
+        tax_401k = st.number_input("401k受取税率(%)", 0.0, 50.0, 12.0, 0.1, format="%.1f") / 100
         age_pension = st.number_input("年金開始年齢", 60, 75, 70)
-        pension_monthly = st.number_input("年金月額(円)", 0, 500000, 150000, step=10000)
+        pension_monthly = st.number_input("年金月額(円)", 0, 500000, 200000, step=10000)
 
         st.markdown("---")
         st.subheader("🛒 支出設定")
