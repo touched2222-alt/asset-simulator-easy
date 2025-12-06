@@ -74,8 +74,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 💰 簡易資産シミュレータ v2.15")
-    st.caption("Ver. Distinct Quotas (Tsumitate 1.2M / Growth 2.4M)")
+    st.markdown("### 💰 簡易資産シミュレータ v2.17")
+    st.caption("Ver. Allow Investment if Working")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -212,7 +212,7 @@ def main():
     paypay = ini_paypay
     nisa_principal = ini_nisa 
 
-    # ★定数: 枠を明確に定義
+    # ★定数
     NISA_TSUMITATE_LIMIT = 1200000 # 年120万
     NISA_GROWTH_LIMIT = 2400000    # 年240万
     NISA_LIFETIME_LIMIT = 18000000 # 生涯1800万
@@ -266,15 +266,16 @@ def main():
         # 4. 積立 (つみたて投資枠)
         val_k401_add = k401_monthly * 12 if (is_working and age < age_401k_get) else 0
         
-        # ★修正: 積立設定は「つみたて投資枠(120万)」を埋めるためのもの
+        # ★修正: 貯蓄があるか、働いていれば(給与天引き感覚で)積立実行
+        can_invest = (cash > 0 or is_working)
+
         val_nisa_add = 0
-        if cash > 0 and age <= nisa_stop_age:
+        if can_invest and age <= nisa_stop_age:
             raw_nisa_add = nisa_monthly * 12
-            # 120万と生涯枠残高の小さい方でキャップ
             lifetime_room = max(0, NISA_LIFETIME_LIMIT - nisa_principal)
             val_nisa_add = min(raw_nisa_add, NISA_TSUMITATE_LIMIT, lifetime_room)
         
-        val_paypay_add = paypay_monthly * 12 if (cash > 0 and age <= paypay_stop_age) else 0
+        val_paypay_add = paypay_monthly * 12 if (can_invest and age <= paypay_stop_age) else 0
 
         # 5. 資産移動
         k401 += val_k401_add
@@ -339,15 +340,10 @@ def main():
         elif age < 60: target = dam_2
         else: target = dam_3
 
-        # ★修正: ダムからの放流は「成長投資枠(240万)」を使う
+        # ダムも「現金がある」なら発動
         if cash > target and age <= nisa_stop_age:
             surplus = cash - target
-            
             lifetime_room = max(0, NISA_LIFETIME_LIMIT - nisa_principal)
-            
-            # つみたて枠(Step4)ですでに使った分は考慮不要（枠が別だから）。
-            # ただし生涯枠(1800万)は共通なので、残りをチェック。
-            
             move = min(surplus, NISA_GROWTH_LIMIT, lifetime_room)
             
             cash -= move
@@ -367,6 +363,7 @@ def main():
     # --- 結果表示 ---
     df = pd.DataFrame(records)
 
+    # 1. グラフ
     if "graph_mode" not in st.session_state:
         st.session_state["graph_mode"] = "積み上げ (総資産)"
     current_mode = st.session_state["graph_mode"]
@@ -386,6 +383,7 @@ def main():
     fig.update_layout(hovermode="x unified")
     st.plotly_chart(fig, use_container_width=True)
 
+    # 2. スライダー
     st.markdown("<br>", unsafe_allow_html=True)
     target_age = st.slider("確認したい年齢", current_age, end_age, 65)
     try:
@@ -398,14 +396,17 @@ def main():
         c5.metric("うち他運用", f"{row['Other']/10000:,.0f}万円")
     except: st.error("データ取得エラー")
 
+    # 3. グラフ切替ボタン
     st.markdown("<br>", unsafe_allow_html=True)
     st.radio("グラフ表示モード", ["積み上げ (総資産)", "折れ線 (個別推移)"], 
              key="graph_mode", horizontal=True)
 
+    # 4. 明細
     st.markdown("<br>", unsafe_allow_html=True)
     with st.expander("📝 年単位の資産明細を表示", expanded=True):
         st.dataframe(df, use_container_width=True)
 
+    # 5. ルール
     st.markdown("<br>", unsafe_allow_html=True)
     with st.expander("ℹ️ このシミュレータのルール（クリックで開く）"):
         st.markdown("""
@@ -414,7 +415,7 @@ def main():
         3.  **つみたて枠（年120万）**：「NISA積立」で設定した金額が優先的に充てられます。
         4.  **成長枠（年240万）**：「最低貯蓄額」を超えた余剰金が、この枠を使って自動投資されます。
         5.  **現金不足時の「取り崩し」**：現金がマイナスになった場合、設定した優先順位に従って補填します。
-        6.  **積立停止**：現金がマイナス（借金）の年は、新規の積立投資を行いません。
+        6.  **積立停止**：現金がマイナス（借金）で、かつ働いていない場合は、新規の積立投資を行いません。
         """)
 
 if __name__ == '__main__':
