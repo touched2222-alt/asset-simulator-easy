@@ -23,13 +23,12 @@ DEFAULT_CONFIG = {
     "dam_1": 500, "dam_2": 700, "dam_3": 300,
     "priority": "新NISAから先に使う",
     "nisa_start_age": 60, "paypay_start_age": 60,
-    "withdraw_limit": 0, # 年間取り崩し上限(0は無制限)
+    "withdraw_limit": 0,
     "inc1_a": 0, "inc1_v": 0, "inc2_a": 0, "inc2_v": 0, "inc3_a": 0, "inc3_v": 0,
     "dec1_a": 65, "dec1_v": 300, "dec2_a": 0, "dec2_v": 0, "dec3_a": 0, "dec3_v": 0
 }
 
 def load_settings():
-    """設定ファイルを読み込んでSession Stateを初期化"""
     config = DEFAULT_CONFIG.copy()
     if os.path.exists(CONFIG_FILE):
         try:
@@ -38,13 +37,11 @@ def load_settings():
                 config.update(saved_config)
         except Exception as e:
             st.error(f"設定読み込みエラー: {e}")
-    
     for key, value in config.items():
         if key not in st.session_state:
             st.session_state[key] = value
 
 def save_settings():
-    """現在の入力値をJSONファイルに保存"""
     save_data = {}
     for key in DEFAULT_CONFIG.keys():
         if key in st.session_state:
@@ -56,26 +53,23 @@ def save_settings():
     except Exception as e:
         st.sidebar.error(f"保存失敗: {e}")
 
-# ページ設定
 st.set_page_config(page_title="簡易資産シミュレータ", page_icon="💰", layout="wide")
 
 def main():
-    # 起動時に設定ロード
     if "first_load_done" not in st.session_state:
         load_settings()
         st.session_state["first_load_done"] = True
 
-    st.title("💰 簡易資産シミュレータ v2.3")
-    st.caption("Ver. Slider Check & NISA Principal & Withdraw Limit")
+    st.title("💰 簡易資産シミュレータ v2.4")
+    st.caption("Ver. NISA Lifetime Limit (1800万)")
 
     with st.expander("ℹ️ このシミュレータのルール（クリックで開く）"):
         st.markdown("""
         1.  **収入はすべて「現金」へ**：給与・年金・臨時収入はまず現金貯金に入ります。
         2.  **年金の手取り**：入力した年金月額から、設定した税率（社会保険料含む）を引いた額が収入となります。
-        3.  **支出は「現金」から**：生活費やイベント費は現金から支払います。
-        4.  **現金余剰は「新NISA」へ**：設定した「最低貯蓄額」を超えた分は自動投資されます（年間上限360万円）。
-        5.  **現金不足時の「取り崩し」**：現金がマイナスになった場合、設定した「解禁年齢」と「優先順位」に従って、資産を取り崩して補填します。
-        6.  **取り崩し上限**：年間上限額を設定した場合、それ以上は資産を売却せず、現金不足（赤字）として残ります。
+        3.  **現金余剰は「新NISA」へ**：最低貯蓄額を超えた分は自動投資されます（**年間360万かつ生涯1800万まで**）。
+        4.  **現金不足時の「取り崩し」**：現金がマイナスになった場合、設定した「解禁年齢」と「優先順位」に従って、資産を取り崩して補填します。
+        5.  **取り崩し上限**：年間上限額を設定した場合、それ以上は資産を売却せず、現金不足（赤字）として残ります。
         """)
 
     # --- サイドバー設定 ---
@@ -85,18 +79,16 @@ def main():
 
     tab1, tab2, tab3, tab4, tab5 = st.sidebar.tabs(["基本・初期", "収入・支出", "積立設定", "取崩し戦略", "臨時収支"])
 
-    with tab1: # 基本・初期
+    with tab1:
         st.subheader("👤 基本情報")
         current_age = st.number_input("現在年齢", 20, 80, key="current_age")
         end_age = st.number_input("終了年齢", 80, 120, key="end_age")
-        
         st.markdown("---")
         st.subheader("💰 現在の資産 (万円)")
         ini_cash = st.number_input("貯蓄 (現金)", 0, 10000, step=10, key="ini_cash") * 10000
         ini_401k = st.number_input("401k (確定拠出)", 0, 10000, step=10, key="ini_401k") * 10000
         ini_nisa = st.number_input("新NISA", 0, 10000, step=10, key="ini_nisa") * 10000
         ini_paypay = st.number_input("他運用 (ポイント運用など)", 0, 10000, step=10, key="ini_paypay") * 10000
-
         st.markdown("---")
         st.subheader("📈 運用利回り (%)")
         r_cash = st.number_input("貯蓄金利", 0.0, 10.0, step=0.01, format="%.2f", key="r_cash") / 100
@@ -105,26 +97,22 @@ def main():
         r_paypay = st.number_input("他運用年利", 0.0, 50.0, step=0.1, format="%.2f", key="r_paypay") / 100
         inflation = st.number_input("インフレ率", -5.0, 20.0, step=0.1, format="%.2f", key="inflation") / 100
 
-    with tab2: # 収入・支出
+    with tab2:
         st.subheader("🏢 働き方と収入")
-        age_work_last = st.number_input("何歳まで働く？（普通は64歳が多い）", 50, 90, key="age_work_last")
-        
+        age_work_last = st.number_input("何歳まで働く？", 50, 90, key="age_work_last")
         st.markdown("##### 手取り年収 (万円)")
         inc_20s = st.number_input("〜29歳", 0, 5000, step=10, key="inc_20s") * 10000
         inc_30s = st.number_input("30〜39歳", 0, 5000, step=10, key="inc_30s") * 10000
         inc_40s = st.number_input("40〜49歳", 0, 5000, step=10, key="inc_40s") * 10000
         inc_50s = st.number_input("50〜59歳", 0, 5000, step=10, key="inc_50s") * 10000
         inc_60s = st.number_input("60歳〜", 0, 5000, step=10, key="inc_60s") * 10000
-
         st.markdown("---")
         st.subheader("🐢 年金・退職金")
         age_401k_get = st.number_input("401k受取年齢", 50, 80, key="age_401k_get")
         tax_401k = st.number_input("401k受取税率(%)", 0.0, 50.0, step=0.1, format="%.1f", key="tax_401k") / 100
-        
         age_pension = st.number_input("年金開始年齢", 60, 75, key="age_pension")
         pension_monthly = st.number_input("年金月額(額面・円)", 0, 500000, step=10000, key="pension_monthly")
         tax_pension = st.number_input("年金税・社会保険料率(%)", 0.0, 50.0, step=0.1, format="%.1f", key="tax_pension") / 100
-
         st.markdown("---")
         st.subheader("🛒 支出設定")
         st.markdown("##### 基本生活費 (月/万円)")
@@ -133,7 +121,6 @@ def main():
         cost_40s = st.number_input("40代 生活費", 0, 500, step=1, key="cost_40s") * 10000
         cost_50s = st.number_input("50代 生活費", 0, 500, step=1, key="cost_50s") * 10000
         cost_60s = st.number_input("60歳〜 生活費", 0, 500, step=1, key="cost_60s") * 10000
-        
         st.markdown("##### 年間特別支出 (万円/年)")
         exp_20s = st.number_input("〜29歳 特別出費", 0, 5000, step=10, key="exp_20s") * 10000
         exp_30s = st.number_input("30代 特別出費", 0, 5000, step=10, key="exp_30s") * 10000
@@ -141,7 +128,7 @@ def main():
         exp_50s = st.number_input("50代 特別出費", 0, 5000, step=10, key="exp_50s") * 10000
         exp_60s = st.number_input("60歳〜 特別出費", 0, 5000, step=10, key="exp_60s") * 10000
 
-    with tab3: # 積立設定
+    with tab3:
         st.subheader("🌱 積立投資の設定")
         col_t1, col_t2 = st.columns(2)
         with col_t1:
@@ -151,28 +138,24 @@ def main():
             paypay_monthly = st.number_input("他運用積立(月/円)", 0, 1000000, step=1000, key="paypay_monthly")
             paypay_stop_age = st.number_input("他運用積立終了年齢", 20, 100, key="paypay_stop_age")
         k401_monthly = st.number_input("401k積立(月/円)", 0, 500000, step=1000, key="k401_monthly")
-
         st.markdown("---")
         st.subheader("💧 最低貯蓄額 (ダム水位)")
         dam_1 = st.number_input("〜49歳 最低貯蓄(万)", 0, 10000, step=50, key="dam_1") * 10000
         dam_2 = st.number_input("50代 最低貯蓄(万)", 0, 10000, step=50, key="dam_2") * 10000
         dam_3 = st.number_input("60歳〜 最低貯蓄(万)", 0, 10000, step=50, key="dam_3") * 10000
 
-    with tab4: # 取崩し戦略
+    with tab4:
         st.subheader("🍂 取り崩し・補填ルール")
         priority = st.radio("取り崩し優先順位 (不足時)", ["新NISAから先に使う", "他運用から先に使う"], horizontal=True, key="priority")
-
         col_out1, col_out2 = st.columns(2)
         with col_out1:
-            nisa_start_age = st.number_input("新NISA 解禁年齢", 50, 100, help="この年齢になるまでは、現金不足でもNISAには手を付けません", key="nisa_start_age")
+            nisa_start_age = st.number_input("新NISA 解禁年齢", 50, 100, key="nisa_start_age")
         with col_out2:
-            paypay_start_age = st.number_input("他運用 解禁年齢", 50, 100, help="この年齢になるまでは、現金不足でも他運用には手を付けません", key="paypay_start_age")
-        
+            paypay_start_age = st.number_input("他運用 解禁年齢", 50, 100, key="paypay_start_age")
         st.markdown("---")
-        # ★追加: 取り崩し上限設定
-        withdraw_limit = st.number_input("年間取り崩し上限額(万円)", 0, 5000, step=10, key="withdraw_limit", help="0にすると無制限。設定すると、現金不足でもこの金額までしか資産を売却しません（借金状態になります）。") * 10000
+        withdraw_limit = st.number_input("年間取り崩し上限額(万円)", 0, 5000, step=10, key="withdraw_limit", help="0で無制限") * 10000
 
-    with tab5: # 臨時イベント
+    with tab5:
         st.subheader("💰 臨時収入 (3枠)")
         c_i1_a, c_i1_v = st.columns([1, 2])
         inc1_age = c_i1_a.number_input("収入① 年齢", 0, 100, key="inc1_a")
@@ -183,7 +166,6 @@ def main():
         c_i3_a, c_i3_v = st.columns([1, 2])
         inc3_age = c_i3_a.number_input("収入③ 年齢", 0, 100, key="inc3_a")
         inc3_val = c_i3_v.number_input("収入③ 金額(万)", 0, 10000, step=100, key="inc3_v") * 10000
-
         st.markdown("---")
         st.subheader("💸 臨時支出 (3枠)")
         c_d1_a, c_d1_v = st.columns([1, 2])
@@ -203,12 +185,10 @@ def main():
     k401 = ini_401k
     nisa = ini_nisa
     paypay = ini_paypay
-    
-    # ★追加: 元本管理用 (平均取得単価法で管理するため、現在の評価額と元本を分けて持つ)
-    # ※シンプルに「いくら拠出したか」ではなく「今の資産のうち元本部分はいくらか」を追跡します
     nisa_principal = ini_nisa 
 
     NISA_ANNUAL_LIMIT = 3600000
+    NISA_LIFETIME_LIMIT = 18000000 # ★追加: 1800万上限
 
     records.append({
         "Age": current_age,
@@ -216,26 +196,22 @@ def main():
         "Cash": int(cash),
         "401k": int(k401),
         "NISA": int(nisa),
-        "NISA元本": int(nisa_principal), # ★追加
+        "NISA元本": int(nisa_principal),
         "Other": int(paypay)
     })
 
     for age in range(current_age + 1, end_age + 1):
         
-        # 1. 運用益の加算
+        # 1. 運用
         cash *= (1 + r_cash)
         nisa *= (1 + r_nisa)
         paypay *= (1 + r_paypay)
-        # ※元本(principal)は運用益では増えない
-
-        if age < age_401k_get:
-            k401 *= (1 + r_401k)
+        if age < age_401k_get: k401 *= (1 + r_401k)
 
         # 2. 収入
         is_working = (age <= age_work_last)
         salary = 0
         annual_extra_exp = 0
-
         if is_working:
             if age < 30: salary = inc_20s; annual_extra_exp = exp_20s
             elif age < 40: salary = inc_30s; annual_extra_exp = exp_30s
@@ -263,17 +239,21 @@ def main():
         # 4. 積立
         val_k401_add = k401_monthly * 12 if (is_working and age < age_401k_get) else 0
         
+        # ★修正: 積立上限チェック (年間360万 AND 生涯1800万)
         raw_nisa_add = nisa_monthly * 12 if (is_working and age <= nisa_stop_age) else 0
-        val_nisa_add = min(raw_nisa_add, NISA_ANNUAL_LIMIT)
+        
+        # あといくら生涯枠が空いているか
+        lifetime_room = max(0, NISA_LIFETIME_LIMIT - nisa_principal)
+        
+        # 年間上限と生涯余力を比較して小さい方を適用
+        val_nisa_add = min(raw_nisa_add, NISA_ANNUAL_LIMIT, lifetime_room)
         
         val_paypay_add = paypay_monthly * 12 if (is_working and age <= paypay_stop_age) else 0
 
-        # 5. 資産移動 (積立)
+        # 5. 資産移動
         k401 += val_k401_add
-        
         nisa += val_nisa_add
-        nisa_principal += val_nisa_add # ★追加: 積立分だけ元本増加
-        
+        nisa_principal += val_nisa_add
         paypay += val_paypay_add
 
         # 6. 401k受取
@@ -297,28 +277,21 @@ def main():
         cash_flow = (salary + pension + event_inc) - (current_cost + annual_extra_exp + event_dec + val_k401_add + val_nisa_add + val_paypay_add)
         cash += cash_flow
 
-        # 9. 資産取り崩し (補填)
+        # 9. 補填
         if cash < 0:
             shortage = abs(cash)
-            year_withdrawn_sum = 0 # 今年の取り崩し合計
-
-            # 内部関数: NISAの場合は元本も減らす必要があるため、少しロジック拡張
+            year_withdrawn_sum = 0
+            
             def withdraw_asset_logic(needed, current_val, principal_val, is_nisa):
                 nonlocal year_withdrawn_sum
-                
-                # 上限チェック
                 limit_remain = float('inf')
                 if withdraw_limit > 0:
                     limit_remain = max(0, withdraw_limit - year_withdrawn_sum)
                 
-                # 実際に引き出せる額 (必要額 vs 残高 vs 上限残)
                 can_pay = min(needed, current_val, limit_remain)
-                
-                # 資産減少
                 new_val = current_val - can_pay
                 year_withdrawn_sum += can_pay
                 
-                # 元本減少 (平均取得単価法: 全体に対する売却割合だけ元本も減る)
                 new_principal = principal_val
                 if is_nisa and current_val > 0 and can_pay > 0:
                     ratio = can_pay / current_val
@@ -326,12 +299,10 @@ def main():
                 
                 return can_pay, new_val, new_principal
 
-            # 優先順位分岐
             if priority == "新NISAから先に使う":
                 if age >= nisa_start_age:
                     pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True)
                     shortage -= pay_nisa
-                
                 if age >= paypay_start_age:
                     pay_other, paypay, _ = withdraw_asset_logic(shortage, paypay, 0, False)
                     shortage -= pay_other
@@ -339,27 +310,32 @@ def main():
                 if age >= paypay_start_age:
                     pay_other, paypay, _ = withdraw_asset_logic(shortage, paypay, 0, False)
                     shortage -= pay_other
-
                 if age >= nisa_start_age:
                     pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True)
                     shortage -= pay_nisa
             
-            # 残った不足分は借金(マイナス)として残る
             cash = -shortage
 
-        # 10. ダム機能
+        # 10. ダム機能 (余剰金投資)
         if age < 50: target = dam_1
         elif age < 60: target = dam_2
         else: target = dam_3
 
         if cash > target:
             surplus = cash - target
-            nisa_remaining_space = max(0, NISA_ANNUAL_LIMIT - val_nisa_add)
-            move = min(surplus, nisa_remaining_space)
+            
+            # 生涯枠の再計算 (積立で増えている可能性があるため)
+            lifetime_room = max(0, NISA_LIFETIME_LIMIT - nisa_principal)
+            
+            # 年間枠の残り
+            annual_remaining = max(0, NISA_ANNUAL_LIMIT - val_nisa_add)
+            
+            # すべての条件で一番小さい額しか移動できない
+            move = min(surplus, annual_remaining, lifetime_room)
             
             cash -= move
             nisa += move
-            nisa_principal += move # ★追加: ダム流入分も元本増加
+            nisa_principal += move
 
         records.append({
             "Age": age,
@@ -367,7 +343,7 @@ def main():
             "Cash": int(cash),
             "401k": int(k401),
             "NISA": int(nisa),
-            "NISA元本": int(nisa_principal), # ★追加
+            "NISA元本": int(nisa_principal),
             "Other": int(paypay)
         })
 
@@ -375,21 +351,15 @@ def main():
     df = pd.DataFrame(records)
 
     st.markdown("### 📊 資産推移シミュレーション")
-    
-    # グラフ描画
     df_melt = df.melt(id_vars=["Age"], value_vars=["Cash", "401k", "NISA", "Other"], var_name="Asset", value_name="Amount")
     colors = {"Cash": "#636EFA", "NISA": "#EF553B", "401k": "#00CC96", "Other": "#AB63FA"}
-    
     fig = px.area(df_melt, x="Age", y="Amount", color="Asset", 
                   labels={"Amount": "金額 (円)", "Age": "年齢"}, 
-                  color_discrete_map=colors,
-                  title="総資産の推移 (積み上げ)")
+                  color_discrete_map=colors, title="総資産の推移 (積み上げ)")
     st.plotly_chart(fig, use_container_width=True)
 
-    # ★復活: 時点チェック用スライダー
     st.markdown("### 🔎 時点データチェック")
     target_age = st.slider("確認したい年齢", current_age, end_age, 65)
-    
     try:
         row = df[df["Age"] == target_age].iloc[0]
         c1, c2, c3, c4, c5 = st.columns(5)
@@ -398,12 +368,9 @@ def main():
         c3.metric("うち新NISA", f"{row['NISA']/10000:,.0f}万円", delta=f"元本 {row['NISA元本']/10000:,.0f}万円")
         c4.metric("うち401k", f"{row['401k']/10000:,.0f}万円")
         c5.metric("うち他運用", f"{row['Other']/10000:,.0f}万円")
-    except:
-        st.error("データ取得エラー")
+    except: st.error("データ取得エラー")
 
     st.markdown("---")
-    
-    # 最終結果カード
     last_row = df.iloc[-1]
     st.markdown("### 🏁 最終結果")
     if last_row['Total'] < 0:
@@ -411,7 +378,6 @@ def main():
     else:
         st.success(f"🎉 {end_age}歳まで資産寿命が持ちました！")
 
-    # 明細テーブル
     with st.expander("📝 年単位の資産明細を表示", expanded=True):
         st.dataframe(df, use_container_width=True)
 
