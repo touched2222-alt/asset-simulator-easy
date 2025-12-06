@@ -6,15 +6,16 @@ import plotly.express as px
 st.set_page_config(page_title="簡易資産シミュレータ", page_icon="💰", layout="wide")
 
 def main():
-    st.title("💰 簡易資産シミュレータ v2.0")
-    st.caption("Custom Strategy Edition: 積立・取崩し期間＆優先順位設定対応")
+    st.title("💰 簡易資産シミュレータ v2.1")
+    st.caption("NISA Limit Edition: 年間360万円上限対応")
 
     with st.expander("ℹ️ このシミュレータのルール（クリックで開く）"):
         st.markdown("""
         1.  **収入はすべて「現金」へ**：給与・年金・臨時収入はまず現金貯金に入ります。
         2.  **支出は「現金」から**：生活費やイベント費は現金から支払います。
-        3.  **現金余剰は「新NISA」へ**：設定した「最低貯蓄額」を超えた分は自動投資されます。
+        3.  **現金余剰は「新NISA」へ**：設定した「最低貯蓄額」を超えた分は自動投資されます（**年間上限360万円**）。120、240は意識してません。
         4.  **現金不足時の「取り崩し」**：現金がマイナスになった場合、設定した「解禁年齢」と「優先順位」に従って、資産を取り崩して補填します。
+        5.  **退職の概念**：『65歳で退職』と言った場合、よくある概念は65歳の誕生日で退職（64歳の最後の日まで仕事）です。
         """)
 
     # --- サイドバー設定 ---
@@ -31,7 +32,7 @@ def main():
         ini_cash = st.number_input("貯蓄 (現金)", 0, 10000, 500, step=10) * 10000
         ini_401k = st.number_input("401k (確定拠出)", 0, 10000, 500, step=10) * 10000
         ini_nisa = st.number_input("新NISA", 0, 10000, 100, step=10) * 10000
-        ini_paypay = st.number_input("他運用 (ポイント運用もOK)", 0, 10000, 10, step=10) * 10000
+        ini_paypay = st.number_input("他運用 (ポイント運用なども可)", 0, 10000, 10, step=10) * 10000
 
         st.markdown("---")
         st.subheader("📈 運用利回り (%)")
@@ -76,7 +77,7 @@ def main():
 
         col_t1, col_t2 = st.columns(2)
         with col_t1:
-            nisa_monthly = st.number_input("NISA積立(月/円)", 0, 1000000, 50000, step=1000)
+            nisa_monthly = st.number_input("NISA積立(月/円)", 0, 300000, 50000, step=1000)
             nisa_stop_age = st.number_input("NISA積立終了年齢", 20, 100, 65)
         with col_t2:
             paypay_monthly = st.number_input("他運用積立(月/円)", 0, 1000000, 10000, step=1000)
@@ -87,12 +88,12 @@ def main():
 
         st.markdown("---")
         st.subheader("💧 最低貯蓄額 (ダム水位)")
-        st.caption("貯蓄が現金を上回った場合、余剰分が自動でNISAに追加投資されます。")
+        st.caption("貯蓄が現金を上回った場合、余剰分が自動でNISAに追加投資されます（年間上限あり）。")
         dam_1 = st.number_input("〜49歳 最低貯蓄(万)", 0, 10000, 500, step=50) * 10000
         dam_2 = st.number_input("50代 最低貯蓄(万)", 0, 10000, 700, step=50) * 10000
         dam_3 = st.number_input("60歳〜 最低貯蓄(万)", 0, 10000, 300, step=50) * 10000
 
-    with tab4: # 取崩し戦略 (New!)
+    with tab4: # 取崩し戦略
         st.subheader("🍂 取り崩し・補填ルール")
         st.write("現金がマイナスになった時、どの資産を・いつから使うかの設定です。")
 
@@ -137,6 +138,8 @@ def main():
     nisa = ini_nisa
     paypay = ini_paypay
     
+    NISA_ANNUAL_LIMIT = 3600000 # 年間上限360万円
+
     # 0歳時点記録
     records.append({
         "Age": current_age,
@@ -183,7 +186,11 @@ def main():
 
         # 4. 積立 (働いていて、かつ設定した積立終了年齢以下なら)
         val_k401_add = k401_monthly * 12 if (is_working and age < age_401k_get) else 0
-        val_nisa_add = nisa_monthly * 12 if (is_working and age <= nisa_stop_age) else 0
+        
+        # NISA積立：ここでまず360万上限チェック
+        raw_nisa_add = nisa_monthly * 12 if (is_working and age <= nisa_stop_age) else 0
+        val_nisa_add = min(raw_nisa_add, NISA_ANNUAL_LIMIT) # 積立だけで360万超えたらカット
+        
         val_paypay_add = paypay_monthly * 12 if (is_working and age <= paypay_stop_age) else 0
 
         # 5. 資産移動 (積立)
@@ -227,34 +234,37 @@ def main():
 
             # 優先順位分岐
             if priority == "新NISAから先に使う":
-                # NISA -> 他運用の順
                 pay_nisa, nisa = withdraw_asset(shortage, nisa, "NISA", nisa_start_age)
                 shortage -= pay_nisa
                 
                 pay_other, paypay = withdraw_asset(shortage, paypay, "Other", paypay_start_age)
                 shortage -= pay_other
             else:
-                # 他運用 -> NISAの順
                 pay_other, paypay = withdraw_asset(shortage, paypay, "Other", paypay_start_age)
                 shortage -= pay_other
 
                 pay_nisa, nisa = withdraw_asset(shortage, nisa, "NISA", nisa_start_age)
                 shortage -= pay_nisa
             
-            # それでも足りない場合は借金状態（現金マイナス）のまま
             cash = -shortage
 
         # 10. 資産自動移動 (ダム機能)
-        # 補填後の現金がターゲットを超えていたらNISAへ
+        # 補填後の現金がターゲットを超えていたらNISAへ (ただし年間上限360万まで)
         if age < 50: target = dam_1
         elif age < 60: target = dam_2
         else: target = dam_3
 
         if cash > target:
             surplus = cash - target
-            # NISAへ移動 (年間360万上限などは簡易的に無視、あるいは前のロジック適用可だが今回はシンプルに全額)
-            cash -= surplus
-            nisa += surplus
+            
+            # 残りのNISA枠を計算
+            nisa_remaining_space = max(0, NISA_ANNUAL_LIMIT - val_nisa_add)
+            
+            # 余剰金 と 残り枠 の小さい方だけ移動
+            move = min(surplus, nisa_remaining_space)
+            
+            cash -= move
+            nisa += move
 
         # 記録
         records.append({
