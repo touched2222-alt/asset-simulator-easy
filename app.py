@@ -61,17 +61,9 @@ def main():
         load_settings()
         st.session_state["first_load_done"] = True
 
-    st.title("💰 簡易資産シミュレータ v2.6")
-    st.caption("Ver. Graph Type Selector Restored")
-
-    with st.expander("ℹ️ このシミュレータのルール（クリックで開く）"):
-        st.markdown("""
-        1.  **収入はすべて「現金」へ**：給与・年金・臨時収入はまず現金貯金に入ります。
-        2.  **年金の手取り**：入力した年金月額から、設定した税率（社会保険料含む）を引いた額が収入となります。
-        3.  **現金余剰は「新NISA」へ**：最低貯蓄額を超えた分は自動投資されます（**年間360万かつ生涯1800万まで**）。
-        4.  **現金不足時の「取り崩し」**：現金がマイナスになった場合、設定した優先順位に従って補填します。
-        5.  **取り崩し上限**：各資産に設定した年間上限額までしか取り崩しません。足りない分は赤字（借金）になります。
-        """)
+    # タイトル
+    st.title("💰 簡易資産シミュレータ v2.8")
+    st.caption("Ver. Layout Optimization")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -154,7 +146,6 @@ def main():
         with col_out2:
             paypay_start_age = st.number_input("他運用 解禁年齢", 50, 100, key="paypay_start_age")
         st.markdown("---")
-        
         st.write("▼ 年間取り崩し上限 (0は無制限)")
         c_lim1, c_lim2 = st.columns(2)
         with c_lim1:
@@ -283,37 +274,27 @@ def main():
         if cash < 0:
             shortage = abs(cash)
             
-            # 汎用取り崩し関数
             def withdraw_asset_logic(needed, current_val, principal_val, is_nisa, limit_setting):
-                # 0は無制限(inf)
                 actual_limit = float('inf') if limit_setting == 0 else limit_setting
-                
                 can_pay = min(needed, current_val, actual_limit)
-                
                 new_val = current_val - can_pay
-                
                 new_principal = principal_val
                 if is_nisa and current_val > 0 and can_pay > 0:
                     ratio = can_pay / current_val
                     new_principal = principal_val * (1 - ratio)
-                
                 return can_pay, new_val, new_principal
 
             if priority == "新NISAから先に使う":
-                # 1. NISA
                 if age >= nisa_start_age:
                     pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True, withdraw_limit_nisa)
                     shortage -= pay_nisa
-                # 2. Other
                 if age >= paypay_start_age:
                     pay_other, paypay, _ = withdraw_asset_logic(shortage, paypay, 0, False, withdraw_limit_other)
                     shortage -= pay_other
             else:
-                # 1. Other
                 if age >= paypay_start_age:
                     pay_other, paypay, _ = withdraw_asset_logic(shortage, paypay, 0, False, withdraw_limit_other)
                     shortage -= pay_other
-                # 2. NISA
                 if age >= nisa_start_age:
                     pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True, withdraw_limit_nisa)
                     shortage -= pay_nisa
@@ -322,74 +303,4 @@ def main():
 
         # 10. ダム機能
         if age < 50: target = dam_1
-        elif age < 60: target = dam_2
-        else: target = dam_3
-
-        if cash > target:
-            surplus = cash - target
-            lifetime_room = max(0, NISA_LIFETIME_LIMIT - nisa_principal)
-            annual_remaining = max(0, NISA_ANNUAL_LIMIT - val_nisa_add)
-            move = min(surplus, annual_remaining, lifetime_room)
-            
-            cash -= move
-            nisa += move
-            nisa_principal += move
-
-        records.append({
-            "Age": age,
-            "Total": int(cash + k401 + nisa + paypay),
-            "Cash": int(cash),
-            "401k": int(k401),
-            "NISA": int(nisa),
-            "NISA元本": int(nisa_principal),
-            "Other": int(paypay)
-        })
-
-    # --- 結果表示 ---
-    df = pd.DataFrame(records)
-
-    st.markdown("### 📊 資産推移シミュレーション")
-    
-    # ★変更: グラフ切り替え
-    graph_type = st.radio("グラフ表示モード", ["積み上げ (総資産)", "折れ線 (個別推移)"], horizontal=True)
-
-    df_melt = df.melt(id_vars=["Age"], value_vars=["Cash", "401k", "NISA", "Other"], var_name="Asset", value_name="Amount")
-    colors = {"Cash": "#636EFA", "NISA": "#EF553B", "401k": "#00CC96", "Other": "#AB63FA"}
-    
-    if graph_type == "積み上げ (総資産)":
-        fig = px.area(df_melt, x="Age", y="Amount", color="Asset", 
-                      labels={"Amount": "金額 (円)", "Age": "年齢"}, 
-                      color_discrete_map=colors, title="総資産の推移 (積み上げ)")
-    else:
-        fig = px.line(df_melt, x="Age", y="Amount", color="Asset", 
-                      labels={"Amount": "金額 (円)", "Age": "年齢"}, 
-                      color_discrete_map=colors, title="各資産の推移 (折れ線)")
-    
-    fig.update_layout(hovermode="x unified") # ホバー時に全データを表示
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.markdown("### 🔎 時点データチェック")
-    target_age = st.slider("確認したい年齢", current_age, end_age, 65)
-    try:
-        row = df[df["Age"] == target_age].iloc[0]
-        c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric(f"{target_age}歳の総資産", f"{row['Total']/10000:,.0f}万円")
-        c2.metric("うち現金", f"{row['Cash']/10000:,.0f}万円")
-        c3.metric("うち新NISA", f"{row['NISA']/10000:,.0f}万円", delta=f"元本 {row['NISA元本']/10000:,.0f}万円")
-        c4.metric("うち401k", f"{row['401k']/10000:,.0f}万円")
-        c5.metric("うち他運用", f"{row['Other']/10000:,.0f}万円")
-    except: st.error("データ取得エラー")
-
-    st.markdown("---")
-    last_row = df.iloc[-1]
-    st.markdown("### 🏁 最終結果")
-    if last_row['Total'] < 0:
-        st.error(f"⚠️ {end_age}歳時点で資金が枯渇しています！")
-    else:
-        st.success(f"🎉 {end_age}歳まで資産寿命が持ちました！")
-
-    with st.expander("📝 年単位の資産明細を表示", expanded=True):
-        st.dataframe(df, use_container_width=True)
-
-if __name__ == '__main__':
-    main()
+        elif age < 6
