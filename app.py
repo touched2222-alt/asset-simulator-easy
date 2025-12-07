@@ -80,8 +80,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 💰 簡易資産シミュレータ v3.0")
-    st.caption("Ver. Added Visitor Counter")
+    st.markdown("### 💰 簡易資産シミュレータ v3.1")
+    st.caption("Ver. Fixed Layout Alignment")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -263,29 +263,36 @@ def main():
         st.subheader("💰 臨時収入 (3枠)")
         c_i1_a, c_i1_v = st.columns([1, 2])
         inc_help = "退職金、遺産相続、満期保険金など、特定の年齢で一度だけ入る大きな収入です。"
-        inc1_age = st.number_input("収入① 年齢", 0, 100, key="inc1_a", help="収入が発生する年齢")
+        # ★ここを修正（c_i1_a.number_input に変更）
+        inc1_age = c_i1_a.number_input("収入① 年齢", 0, 100, key="inc1_a", help="収入が発生する年齢")
         inc1_val = c_i1_v.number_input("収入① 金額(万)", 0, 10000, step=100, key="inc1_v", help=inc_help) * 10000
+        
         c_i2_a, c_i2_v = st.columns([1, 2])
-        inc2_age = st.number_input("収入② 年齢", 0, 100, key="inc2_a")
+        inc2_age = c_i2_a.number_input("収入② 年齢", 0, 100, key="inc2_a")
         inc2_val = c_i2_v.number_input("収入② 金額(万)", 0, 10000, step=100, key="inc2_v") * 10000
+        
         c_i3_a, c_i3_v = st.columns([1, 2])
-        inc3_age = st.number_input("収入③ 年齢", 0, 100, key="inc3_a")
+        inc3_age = c_i3_a.number_input("収入③ 年齢", 0, 100, key="inc3_a")
         inc3_val = c_i3_v.number_input("収入③ 金額(万)", 0, 10000, step=100, key="inc3_v") * 10000
         
         st.markdown("---")
         st.subheader("💸 臨時支出 (3枠)")
         dec_help = "子供の学費入学金、住宅購入頭金、リフォーム費用など、特定の年齢で発生する大きな出費です。"
+        
+        # ★ここも修正（c_d1_a.number_input に変更）
         c_d1_a, c_d1_v = st.columns([1, 2])
-        dec1_age = st.number_input("支出① 年齢", 0, 100, key="dec1_a", help="支出が発生する年齢")
+        dec1_age = c_d1_a.number_input("支出① 年齢", 0, 100, key="dec1_a", help="支出が発生する年齢")
         dec1_val = c_d1_v.number_input("支出① 金額(万)", 0, 10000, step=100, key="dec1_v", help=dec_help) * 10000
+        
         c_d2_a, c_d2_v = st.columns([1, 2])
-        dec2_age = st.number_input("支出② 年齢", 0, 100, key="dec2_a")
+        dec2_age = c_d2_a.number_input("支出② 年齢", 0, 100, key="dec2_a")
         dec2_val = c_d2_v.number_input("支出② 金額(万)", 0, 10000, step=100, key="dec2_v") * 10000
+        
         c_d3_a, c_d3_v = st.columns([1, 2])
-        dec3_age = st.number_input("支出③ 年齢", 0, 100, key="dec3_a")
+        dec3_age = c_d3_a.number_input("支出③ 年齢", 0, 100, key="dec3_a")
         dec3_val = c_d3_v.number_input("支出③ 金額(万)", 0, 10000, step=100, key="dec3_v") * 10000
 
-    # ★ 追加: オマケタブ (解説付き)
+    # ★ オマケタブ (解説付き)
     with tab6:
         st.subheader("🧮 必要資産額シミュレータ")
         st.caption("「毎年これくらい使いたいなら、元本はいくら必要？」を計算します。")
@@ -317,10 +324,9 @@ def main():
         else:
             st.warning("利回りを0より大きく設定してください。")
 
-    # --- カウンター表示 (サイドバーの下の方) ---
+    # --- カウンター表示 ---
     st.sidebar.markdown("---")
     st.sidebar.caption("👀 訪問者数")
-    # バッジサービスを利用してアクセスカウンターを表示 (page_idで一意に識別)
     st.sidebar.markdown(f"![Visitor Count](https://visitor-badge.laobi.icu/badge?page_id=touched2222_asset_simulator)")
 
     # --- 計算ロジック ---
@@ -518,6 +524,7 @@ def main():
     # --- 結果表示 ---
     df = pd.DataFrame(records)
 
+    # 1. グラフ
     if "graph_mode" not in st.session_state:
         st.session_state["graph_mode"] = "積み上げ (総資産)"
     current_mode = st.session_state["graph_mode"]
