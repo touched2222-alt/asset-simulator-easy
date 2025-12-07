@@ -60,10 +60,10 @@ def get_download_json():
 def next_step_guide(text):
     """次のステップへの誘導を表示する関数"""
     st.markdown("---")
-    st.info(f"👉 **入力完了ですか？ タブを押して『{text}』へ進んでください**")
+    st.info(f"👉 **入力完了ですか？ 上のタブで『{text}』へ進んでください**")
 
 # --- メインアプリ ---
-st.set_page_config(page_title="簡易資産シミュレータ v5.4", page_icon="🌷", layout="wide")
+st.set_page_config(page_title="簡易資産シミュレータ v5.5", page_icon="💎", layout="wide")
 
 def main():
     if "first_load_done" not in st.session_state:
@@ -72,38 +72,46 @@ def main():
                 st.session_state[key] = value
         st.session_state["first_load_done"] = True
     
-    # ★デザインカスタマイズ (Step Process Flow)
+    # ★デザインカスタマイズ (Geometric Chic Theme)
     st.markdown("""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@300;400;500&display=swap');
         
+        /* ベース設定: 落ち着いたグレージュ背景 */
         html, body, [class*="css"] {
-            font-family: 'Noto Sans JP', sans-serif;
-            color: #5d5555;
+            font-family: 'Zen Kaku Gothic New', sans-serif;
+            color: #4a4a4a;
         }
         .stApp {
-            background-color: #fffbfb;
+            background-color: #fcfcfc; /* ほぼ白 */
+            background-image: 
+                linear-gradient(#f0f0f0 1px, transparent 1px),
+                linear-gradient(90deg, #f0f0f0 1px, transparent 1px);
+            background-size: 40px 40px; /* 方眼紙のような幾何学模様 */
         }
 
+        /* サイドバー: シックなグレー */
         [data-testid="stSidebar"] {
-            background-color: #fff0f5;
-            border-right: 1px solid #fce7f3;
+            background-color: #f7f7f5;
+            border-right: 1px solid #e0e0e0;
         }
         [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-            color: #be185d !important;
+            color: #5c5c5c !important;
         }
 
+        /* 見出し: 明朝体でエレガントに、色はブロンズ/カッパー系 */
         h1, h2, h3 {
             font-family: 'Shippori Mincho', serif;
-            color: #9d174d !important;
+            color: #8d6e63 !important; /* 落ち着いたブラウン・カッパー */
             font-weight: 700 !important;
+            letter-spacing: 0.05em;
         }
         h4, h5, h6 {
-            color: #831843 !important;
+            color: #6d4c41 !important;
             font-weight: 600 !important;
         }
         
-        /* --- ★ステップフロー型タブデザイン --- */
+        /* --- ステップフロー型タブデザイン (シック版) --- */
         
         .stTabs [data-baseweb="tab-list"] {
             gap: 0px;
@@ -113,14 +121,14 @@ def main():
         }
         
         .stTabs [data-baseweb="tab"] {
-            background-color: #fdf2f8; 
-            color: #9d8189;
+            background-color: #e0e0e0; /* 未選択：グレー */
+            color: #757575;
             border: none;
             border-radius: 0;
-            padding: 12px 10px 12px 25px; /* 高さを少し増やす */
+            padding: 12px 10px 12px 25px;
             margin-right: -12px;
-            font-family: 'Noto Sans JP', sans-serif;
-            font-weight: 600;
+            font-family: 'Zen Kaku Gothic New', sans-serif;
+            font-weight: 500;
             font-size: 0.9rem;
             
             /* 矢印形状 */
@@ -139,59 +147,88 @@ def main():
             padding-left: 10px;
         }
 
-        /* 選択中のタブ */
+        /* 選択中のタブ: カッパー〜ベージュのグラデーション */
         .stTabs [aria-selected="true"] {
-            background: linear-gradient(to right, #be185d, #db2777) !important; /* グラデーション背景 */
-            color: white !important;
+            background: linear-gradient(to right, #a1887f, #d7ccc8) !important;
+            color: #3e2723 !important;
             z-index: 10;
-            text-shadow: 0px 1px 2px rgba(0,0,0,0.2);
+            font-weight: 700;
+            text-shadow: 0px 1px 1px rgba(255,255,255,0.3);
         }
         
-        /* タブごとの色味変化（擬似的にnth-childで指定するのはStreamlitの構造上難しいが、ホバーで表現） */
         .stTabs [data-baseweb="tab"]:hover {
-            background-color: #fbcfe8;
-            color: #831843;
+            background-color: #d7ccc8;
+            color: #5d4037;
             z-index: 5;
         }
 
-        /* --- その他 --- */
+        /* --- その他デザイン --- */
+
+        /* カードデザイン: シンプルでフラット寄り */
         [data-testid="stMetric"] {
             background-color: #ffffff;
-            border: 1px solid #fce7f3;
-            border-radius: 16px;
+            border: 1px solid #eeeeee;
+            border-radius: 4px; /* 角は少しだけ丸く */
             padding: 16px;
-            box-shadow: 0 4px 10px rgba(244, 114, 182, 0.1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            border-left: 4px solid #bcaaa4; /* 左にアクセントカラー */
+        }
+        [data-testid="stMetricLabel"] {
+            color: #8d6e63 !important;
+            font-size: 0.85rem !important;
         }
         [data-testid="stMetricValue"] {
-            color: #831843 !important;
+            color: #4e342e !important;
             font-family: 'Shippori Mincho', serif;
         }
-        .custom-card {
-            background-color: #ffffff;
-            border: 1px solid #fce7f3;
-            border-radius: 20px;
-            padding: 24px;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(244, 114, 182, 0.1);
+        [data-testid="stMetricDelta"] {
+            color: #7cb342 !important; /* 落ち着いたグリーン */
         }
+
+        /* カスタムカード（オマケタブ用） */
+        .custom-card {
+            background-color: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        /* ボタン: 落ち着いたカッパー色 */
         .stButton button {
-            background-color: #fbcfe8;
-            color: #831843 !important;
-            border: 1px solid #f9a8d4;
-            border-radius: 20px;
+            background-color: #d7ccc8;
+            color: #4e342e !important;
+            border: 1px solid #a1887f;
+            border-radius: 4px;
             font-weight: 600;
         }
-        .stNumberInput input, .stSelectbox div[data-baseweb="select"] {
-            border-radius: 10px;
-            border: 1px solid #f9a8d4 !important;
-            background-color: #fff;
+        .stButton button:hover {
+            background-color: #a1887f;
+            color: white !important;
         }
-        hr { border-color: #fbcfe8; }
+        
+        /* 入力フォーム: シンプル */
+        .stNumberInput input, .stSelectbox div[data-baseweb="select"] {
+            border-radius: 4px;
+            border: 1px solid #d0d0d0 !important;
+            background-color: #fafafa;
+        }
+        
+        /* 区切り線 */
+        hr { border-color: #e0e0e0; }
+        
+        /* 情報ボックスの色味調整 */
+        .stAlert {
+            background-color: #f5f5f5;
+            color: #424242;
+            border: 1px solid #e0e0e0;
+        }
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("🌷 簡易資産シミュレータ v5.4")
-    st.caption("Ver. Step-by-Step Navigation Guide")
+    st.title("💎 簡易資産シミュレータ v5.5")
+    st.caption("Ver. Geometric Chic Design")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -215,38 +252,37 @@ def main():
     
     st.sidebar.markdown("---") 
     
-    # ★ タブ名に「STEP」をつけて順序を強制
+    # ★ タブ名 (シンプルに)
     tab1, tab2, tab3, tab4, tab5, tab6 = st.sidebar.tabs([
-        "STEP1.基本", "STEP2.収支", "STEP3.積立", "STEP4.取崩", "STEP5.臨時", "STEP6.完了"
+        "1.基本", "2.収支", "3.積立", "4.取崩", "5.臨時", "6.完了"
     ])
 
     # --- 入力 UI ---
     with tab1:
         st.subheader("👤 基本情報の入力")
-        current_age = st.number_input("現在年齢", 20, 80, key="current_age", help="シミュレーションを開始する年齢です。")
-        end_age = st.number_input("終了年齢", 80, 120, key="end_age", help="シミュレーションを何歳まで行うか設定します。")
+        current_age = st.number_input("現在年齢", 20, 80, key="current_age")
+        end_age = st.number_input("終了年齢", 80, 120, key="end_age")
         
         st.markdown("---")
         st.subheader("💰 現在の資産 (万円)")
-        ini_cash = st.number_input("貯蓄 (現金)", 0, 10000, step=10, key="ini_cash", help="現在保有している銀行預金や現金の合計額です。") * 10000
-        ini_401k = st.number_input("401k (確定拠出)", 0, 10000, step=10, key="ini_401k", help="iDeCoや企業型DCの現在の残高です。") * 10000
-        ini_nisa = st.number_input("新NISA", 0, 10000, step=10, key="ini_nisa", help="新NISA口座にある現在の資産残高です。") * 10000
-        ini_paypay = st.number_input("他運用 (ポイント運用など)", 0, 10000, step=10, key="ini_paypay", help="特定口座やポイント運用など、NISA以外の投資資産です。") * 10000
+        ini_cash = st.number_input("貯蓄 (現金)", 0, 10000, step=10, key="ini_cash") * 10000
+        ini_401k = st.number_input("401k (確定拠出)", 0, 10000, step=10, key="ini_401k") * 10000
+        ini_nisa = st.number_input("新NISA", 0, 10000, step=10, key="ini_nisa") * 10000
+        ini_paypay = st.number_input("他運用 (ポイント運用など)", 0, 10000, step=10, key="ini_paypay") * 10000
         
         st.markdown("---")
         st.subheader("📈 運用利回り (%)")
-        r_cash = st.number_input("貯蓄金利", 0.0, 10.0, step=0.01, format="%.2f", key="r_cash", help="銀行預金の想定金利です。") / 100
-        r_401k = st.number_input("401k年利", 0.0, 30.0, step=0.1, format="%.2f", key="r_401k", help="401k/iDeCoの想定リターンです。") / 100
-        r_nisa = st.number_input("新NISA年利", 0.0, 30.0, step=0.1, format="%.2f", key="r_nisa", help="新NISAの想定リターンです。") / 100
-        r_paypay = st.number_input("他運用年利", 0.0, 50.0, step=0.1, format="%.2f", key="r_paypay", help="その他の投資資産の想定リターンです。") / 100
-        inflation = st.number_input("インフレ率", -5.0, 20.0, step=0.1, format="%.2f", key="inflation", help="毎年の生活費の上昇率です。") / 100
+        r_cash = st.number_input("貯蓄金利", 0.0, 10.0, step=0.01, format="%.2f", key="r_cash") / 100
+        r_401k = st.number_input("401k年利", 0.0, 30.0, step=0.1, format="%.2f", key="r_401k") / 100
+        r_nisa = st.number_input("新NISA年利", 0.0, 30.0, step=0.1, format="%.2f", key="r_nisa") / 100
+        r_paypay = st.number_input("他運用年利", 0.0, 50.0, step=0.1, format="%.2f", key="r_paypay") / 100
+        inflation = st.number_input("インフレ率", -5.0, 20.0, step=0.1, format="%.2f", key="inflation") / 100
         
-        # ★ 次へ誘導
-        next_step_guide("STEP2. 収支")
+        next_step_guide("STEP 2: 収支")
 
     with tab2:
         st.subheader("🏢 働き方と収入の入力")
-        age_work_last = st.number_input("何歳まで働く？", 50, 90, key="age_work_last", help="給与収入が得られる最後の年齢です。")
+        age_work_last = st.number_input("何歳まで働く？", 50, 90, key="age_work_last")
         
         st.markdown("##### 手取り年収 (万円)")
         inc_help = "ボーナスを含めた、年間の手取り収入の合計を入力してください。"
@@ -258,11 +294,11 @@ def main():
         
         st.markdown("---")
         st.subheader("🐢 年金・退職金")
-        age_401k_get = st.number_input("401k受取年齢", 50, 80, key="age_401k_get", help="積み立てたiDeCo/401kを一括で受け取る年齢です。")
-        tax_401k = st.number_input("401k受取税率(%)", 0.0, 50.0, step=0.1, format="%.1f", key="tax_401k", help="退職金受け取り時の税金です。") / 100
-        age_pension = st.number_input("年金開始年齢", 60, 75, key="age_pension", help="公的年金を受給開始する年齢です。")
-        pension_monthly = st.number_input("年金月額(額面・円)", 0, 500000, step=10000, key="pension_monthly", help="将来の受給予定月額（額面）です。")
-        tax_pension = st.number_input("年金税・社会保険料率(%)", 0.0, 50.0, step=0.1, format="%.1f", key="tax_pension", help="年金から天引きされる税金や保険料の割合です。") / 100
+        age_401k_get = st.number_input("401k受取年齢", 50, 80, key="age_401k_get")
+        tax_401k = st.number_input("401k受取税率(%)", 0.0, 50.0, step=0.1, format="%.1f", key="tax_401k") / 100
+        age_pension = st.number_input("年金開始年齢", 60, 75, key="age_pension")
+        pension_monthly = st.number_input("年金月額(額面・円)", 0, 500000, step=10000, key="pension_monthly")
+        tax_pension = st.number_input("年金税・社会保険料率(%)", 0.0, 50.0, step=0.1, format="%.1f", key="tax_pension") / 100
         
         st.markdown("---")
         st.subheader("🛒 支出設定")
@@ -282,51 +318,48 @@ def main():
         exp_50s = st.number_input("50代 特別出費", 0, 5000, step=10, key="exp_50s", help=exp_help) * 10000
         exp_60s = st.number_input("60歳〜 特別出費", 0, 5000, step=10, key="exp_60s", help=exp_help) * 10000
 
-        # ★ 次へ誘導
-        next_step_guide("STEP3. 積立")
+        next_step_guide("STEP 3: 積立")
 
     with tab3:
         st.subheader("🌱 積立投資の設定")
         col_t1, col_t2 = st.columns(2)
         with col_t1:
             st.markdown("**1. NISA つみたて投資枠**")
-            nisa_monthly = st.number_input("月額積立(円)", 0, 500000, step=1000, key="nisa_monthly", help="年間120万円が上限です。")
+            nisa_monthly = st.number_input("月額積立(円)", 0, 500000, step=1000, key="nisa_monthly")
             nisa_year_val = nisa_monthly * 12
             if nisa_year_val <= 1200000:
                 st.info(f"✅ 年間 {nisa_year_val/10000:.0f}万 / 120万")
             else:
                 st.warning(f"⚠️ 年間120万を超えています。")
-            nisa_stop_age = st.number_input("NISA積立終了年齢", 20, 100, key="nisa_stop_age", help="何歳まで積立を続けるか設定します。")
+            nisa_stop_age = st.number_input("NISA積立終了年齢", 20, 100, key="nisa_stop_age")
         with col_t2:
             st.markdown("**2. 他運用 (特定口座など)**")
-            paypay_monthly = st.number_input("他運用積立(月/円)", 0, 1000000, step=1000, key="paypay_monthly", help="NISA枠外で行う毎月の積立額です。")
+            paypay_monthly = st.number_input("他運用積立(月/円)", 0, 1000000, step=1000, key="paypay_monthly")
             st.write(f"(年間 {paypay_monthly*12/10000:.0f}万円)")
-            paypay_stop_age = st.number_input("他運用積立終了年齢", 20, 100, key="paypay_stop_age", help="この年齢になるまで積立を行います。")
+            paypay_stop_age = st.number_input("他運用積立終了年齢", 20, 100, key="paypay_stop_age")
             
         st.markdown("---")
         st.write("※401kは「働く期間」かつ「受取年齢の前」まで積立を行います。")
-        k401_monthly = st.number_input("401k積立(月/円)", 0, 500000, step=1000, key="k401_monthly", help="給与天引きされる確定拠出年金の自己負担分です。")
+        k401_monthly = st.number_input("401k積立(月/円)", 0, 500000, step=1000, key="k401_monthly")
         
         st.markdown("---")
         st.subheader("💧 最低貯蓄額 (ダム水位)")
         st.caption("最低貯蓄額を超えた余剰金は、**「NISA 成長投資枠 (最大年240万)」** を埋めるために自動投資されます。")
-        dam_help = "生活防衛資金として、投資に回さずに現金で持っておきたい最低金額です。"
-        dam_1 = st.number_input("〜49歳 最低貯蓄(万)", 0, 10000, step=50, key="dam_1", help=dam_help) * 10000
-        dam_2 = st.number_input("50代 最低貯蓄(万)", 0, 10000, step=50, key="dam_2", help=dam_help) * 10000
-        dam_3 = st.number_input("60歳〜 最低貯蓄(万)", 0, 10000, step=50, key="dam_3", help=dam_help) * 10000
+        dam_1 = st.number_input("〜49歳 最低貯蓄(万)", 0, 10000, step=50, key="dam_1") * 10000
+        dam_2 = st.number_input("50代 最低貯蓄(万)", 0, 10000, step=50, key="dam_2") * 10000
+        dam_3 = st.number_input("60歳〜 最低貯蓄(万)", 0, 10000, step=50, key="dam_3") * 10000
 
-        # ★ 次へ誘導
-        next_step_guide("STEP4. 取崩")
+        next_step_guide("STEP 4: 取崩")
 
     with tab4:
         st.subheader("🍂 取崩し・補填ルール")
-        priority = st.radio("取り崩し優先順位 (不足時)", ["新NISAから先に使う", "他運用から先に使う"], horizontal=True, key="priority", help="現金が足りなくなった時、どちらの資産を優先して売却するかを選びます。")
+        priority = st.radio("取り崩し優先順位 (不足時)", ["新NISAから先に使う", "他運用から先に使う"], horizontal=True, key="priority")
         
         col_out1, col_out2 = st.columns(2)
         with col_out1:
-            nisa_start_age = st.number_input("新NISA 解禁年齢", 50, 100, key="nisa_start_age", help="この年齢になるまでは、現金が不足してもNISAには手を付けません。")
+            nisa_start_age = st.number_input("新NISA 解禁年齢", 50, 100, key="nisa_start_age")
         with col_out2:
-            paypay_start_age = st.number_input("他運用 解禁年齢", 50, 100, key="paypay_start_age", help="この年齢になるまでは、現金が不足しても他運用資産には手を付けません。")
+            paypay_start_age = st.number_input("他運用 解禁年齢", 50, 100, key="paypay_start_age")
         
         st.markdown("---")
         st.write("▼ 取り崩し上限設定")
@@ -336,7 +369,7 @@ def main():
         c_n_mode, c_n_val = st.columns([3, 2])
         limit_mode_options = ["年額定額 (万円)", "総資産比率 (%)", "残高比率 (%)"]
         
-        limit_mode_nisa = c_n_mode.selectbox("NISA上限方式", limit_mode_options, key="limit_mode_nisa", label_visibility="collapsed", help="取り崩す金額の上限ルールを決めます。")
+        limit_mode_nisa = c_n_mode.selectbox("NISA上限方式", limit_mode_options, key="limit_mode_nisa", label_visibility="collapsed")
         
         if limit_mode_nisa == "年額定額 (万円)":
             limit_val_nisa = c_n_val.number_input(
@@ -359,7 +392,7 @@ def main():
         # --- 他運用上限設定 ---
         st.markdown("**他運用 の年間上限**")
         c_o_mode, c_o_val = st.columns([3, 2])
-        limit_mode_other = c_o_mode.selectbox("他運用上限方式", limit_mode_options, key="limit_mode_other", label_visibility="collapsed", help="他運用資産の取り崩しルールです。")
+        limit_mode_other = c_o_mode.selectbox("他運用上限方式", limit_mode_options, key="limit_mode_other", label_visibility="collapsed")
         
         if limit_mode_other == "年額定額 (万円)":
             limit_val_other = c_o_val.number_input(
@@ -383,12 +416,10 @@ def main():
         tax_rate_other = st.number_input("他運用 取崩し税率", 0.0, 50.0, step=0.1, format="%.1f", key="tax_rate_other", 
             help="現金化して引き出す場合の税金です。利益に対して約20%が目安です。") / 100
 
-        # ★ 次へ誘導
-        next_step_guide("STEP5. 臨時")
+        next_step_guide("STEP 5: 臨時")
 
     with tab5:
         st.subheader("🎀 臨時収入・支出")
-        st.caption("イベントごとの大きな出費や収入があれば入力してください。なければスキップ可能です。")
         
         c_i1_a, c_i1_v = st.columns([1, 2])
         inc_help = "退職金、遺産相続、満期保険金など、特定の年齢で一度だけ入る大きな収入です。"
@@ -418,10 +449,9 @@ def main():
         dec3_age = c_d3_a.number_input("支出③ 年齢", 0, 100, key="dec3_a")
         dec3_val = c_d3_v.number_input("支出③ 金額(万)", 0, 10000, step=100, key="dec3_v") * 10000
 
-        # ★ 次へ誘導
-        next_step_guide("STEP6. 完了・オマケ")
+        next_step_guide("STEP 6: 完了・オマケ")
 
-    # ★ オマケタブ (解説付き・デザイン調整)
+    # ★ オマケタブ (解説付き)
     with tab6:
         st.subheader("✨ 必要資産額シミュレータ (オマケ)")
         
@@ -435,13 +465,14 @@ def main():
         if target_interest_rate > 0:
             required_asset = (target_yearly_income * 10000) / (target_interest_rate / 100)
             
+            # ★デザイン変更: シックなカード表示
             st.markdown(f"""
                 <div class="custom-card">
-                    <h4 style="color: #9d5b75; margin-bottom: 5px; font-family: 'Shippori Mincho', serif;">必要な総資産額</h4>
-                    <p style="font-size: 2.8rem; font-weight: 700; color: #831843; margin: 0; font-family: 'Shippori Mincho', serif; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);">
-                        {required_asset/10000:,.0f}<span style="font-size: 1.2rem; color: #9d8189;"> 万円</span>
+                    <h4 style="color: #5d4037; margin-bottom: 5px; font-family: 'Shippori Mincho', serif;">必要な総資産額</h4>
+                    <p style="font-size: 2.8rem; font-weight: 700; color: #4e342e; margin: 0; font-family: 'Shippori Mincho', serif; letter-spacing: 0.05em;">
+                        {required_asset/10000:,.0f}<span style="font-size: 1.2rem; color: #8d6e63;"> 万円</span>
                     </p>
-                    <p style="color: #704855; margin-top: 5px; font-size: 0.9rem;">
+                    <p style="color: #757575; margin-top: 5px; font-size: 0.9rem;">
                         (年利 {target_interest_rate}% で運用した場合)
                     </p>
                 </div>
@@ -573,8 +604,10 @@ def main():
         if cash < 0:
             shortage = abs(cash)
             
+            # 総資産（投資資産）
             current_total_investments = nisa + paypay + k401
 
+            # 上限額の計算
             def calc_actual_limit(mode, val, current_asset, total_assets):
                 if mode == "年額定額 (万円)":
                     if val == 0: return float('inf') 
@@ -588,6 +621,7 @@ def main():
             limit_nisa_yen = calc_actual_limit(limit_mode_nisa, nisa_limit_yen_calc, nisa, current_total_investments)
             limit_other_yen = calc_actual_limit(limit_mode_other, other_limit_yen_calc, paypay, current_total_investments)
 
+            # 引出し処理 (税率対応)
             def withdraw_asset_logic(needed, current_val, principal_val, is_nisa, limit_yen, tax_rate=0.0):
                 gross_needed = needed / (1 - tax_rate) if (1 - tax_rate) > 0 else needed
                 can_withdraw_gross = min(gross_needed, current_val, limit_yen)
@@ -602,6 +636,7 @@ def main():
                 
                 return net_cash_obtained, new_val, new_principal
 
+            # 優先順位分岐
             if priority == "新NISAから先に使う":
                 if age >= nisa_start_age:
                     pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True, limit_nisa_yen, 0.0)
@@ -652,19 +687,19 @@ def main():
     # --- 結果表示 ---
     df = pd.DataFrame(records)
 
-    # 1. グラフ (Soft Elegant Colors)
+    # 1. グラフ (Geometric Chic Colors)
     if "graph_mode" not in st.session_state:
         st.session_state["graph_mode"] = "積み上げ (総資産)"
     current_mode = st.session_state["graph_mode"]
 
     df_melt = df.melt(id_vars=["Age"], value_vars=["Cash", "401k", "NISA", "Other"], var_name="Asset", value_name="Amount")
     
-    # 優しい色合いのパレット
+    # 落ち着いた大人の配色
     colors = {
-        "Cash": "#a5b4fc",  # Soft Indigo
-        "NISA": "#fca5a5",  # Soft Red/Pink
-        "401k": "#86efac",  # Soft Green
-        "Other": "#f0abfc"  # Soft Purple
+        "Cash": "#90a4ae",  # Blue Grey
+        "NISA": "#e57373",  # Muted Red
+        "401k": "#81c784",  # Muted Green
+        "Other": "#ba68c8"  # Muted Purple
     }
     
     if current_mode == "積み上げ (総資産)":
@@ -680,7 +715,7 @@ def main():
         hovermode="x unified",
         plot_bgcolor="white",
         paper_bgcolor="white",
-        font={"family": "Noto Sans JP", "color": "#5d5555"},
+        font={"family": "Zen Kaku Gothic New", "color": "#5d5555"},
         margin=dict(l=20, r=20, t=40, b=20),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
