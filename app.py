@@ -24,8 +24,8 @@ DEFAULT_CONFIG = {
     
     # 上限設定
     "limit_mode_nisa": "年額定額 (万円)",
-    "limit_val_nisa_yen": 0,
-    "limit_val_nisa_pct": 4.0,
+    "limit_val_nisa_yen": 0,    # 整数で管理
+    "limit_val_nisa_pct": 4.0,  # 小数で管理
     
     "limit_mode_other": "年額定額 (万円)",
     "limit_val_other_yen": 20,
@@ -80,8 +80,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 💰 簡易資産シミュレータ v2.8")
-    st.caption("Ver. Bonus Calculation Tab Added")
+    st.markdown("### 💰 簡易資産シミュレータ v2.9")
+    st.caption("Ver. With '4% Rule' Explanation")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -103,7 +103,6 @@ def main():
     
     st.sidebar.markdown("---") 
     
-    # ★ タブを6つに拡張（一番右にオマケを追加）
     tab1, tab2, tab3, tab4, tab5, tab6 = st.sidebar.tabs(["基本・初期", "収入・支出", "積立設定", "取崩し戦略", "臨時収支", "🎁 オマケ"])
 
     # --- 入力 UI ---
@@ -258,7 +257,7 @@ def main():
         
         st.markdown("**他運用 取崩し税率 (%)**")
         tax_rate_other = st.number_input("他運用 取崩し税率", 0.0, 50.0, step=0.1, format="%.1f", key="tax_rate_other", 
-            help="現金化して引き出す場合の税金です。利益に対して約20%が目安です。簡易的に「取崩し額全体」に対して計算します。") / 100
+            help="現金化して引き出す場合の税金です。利益に対して約20%が目安です。") / 100
 
     with tab5:
         st.subheader("💰 臨時収入 (3枠)")
@@ -286,7 +285,7 @@ def main():
         dec3_age = st.number_input("支出③ 年齢", 0, 100, key="dec3_a")
         dec3_val = c_d3_v.number_input("支出③ 金額(万)", 0, 10000, step=100, key="dec3_v") * 10000
 
-    # ★ 追加: オマケタブ
+    # ★ 追加: オマケタブ (解説付き)
     with tab6:
         st.subheader("🧮 必要資産額シミュレータ")
         st.caption("「毎年これくらい使いたいなら、元本はいくら必要？」を計算します。")
@@ -299,12 +298,23 @@ def main():
         st.markdown("#### ステップ2: 計算結果")
         
         if target_interest_rate > 0:
-            # 必要資産 = 年間取崩額 / 利回り
             required_asset = (target_yearly_income * 10000) / (target_interest_rate / 100)
             
             st.metric("必要な総資産額", f"{required_asset/10000:,.0f} 万円")
             st.info(f"💡 **{required_asset/10000:,.0f}万円** を年利 **{target_interest_rate}%** で運用すれば、元本を減らさずに毎年 **{target_yearly_income}万円** を受け取り続けられます。")
-            st.caption("※税金やインフレは考慮していません。簡易的な目安としてお使いください。")
+            
+            # ★ 追加: 4%ルール解説
+            st.markdown("---")
+            with st.expander("📚 4%ルールとは？（豆知識）"):
+                st.markdown("""
+                **「年間支出の25倍の資産を築けば、年利4%の運用益で生活費をまかなえる」** という、米国発の有名な経験則です。
+                
+                * **トリニティ・スタディ:** 米国のトリニティ大学の研究で、「資産を株式と債券で持ち、毎年4%ずつ取り崩しても、30年後に資産が枯渇していない確率は非常に高い（90%以上）」という結果が出ました。
+                * **計算式:** 年間支出 ÷ 4%（0.04）＝ **年間支出 × 25**
+                * **例:** 毎年240万円欲しいなら、240万円 × 25 ＝ **6,000万円** が目標になります。
+                
+                ※ただし、これは過去の米国市場データに基づいたものであり、将来を保証するものではありません。インフレや暴落リスクも考慮する必要があります。
+                """)
         else:
             st.warning("利回りを0より大きく設定してください。")
 
