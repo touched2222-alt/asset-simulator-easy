@@ -21,11 +21,16 @@ DEFAULT_CONFIG = {
     "dam_1": 700, "dam_2": 700, "dam_3": 500,
     "priority": "新NISAから先に使う",
     "nisa_start_age": 65, "paypay_start_age": 60,
-    # ★変更: 上限値だけでなく「方式」も保存
+    
+    # ★変更: 上限設定を「金額用」と「％用」で別々に保存するように改良
     "limit_mode_nisa": "年額定額 (万円)",
-    "withdraw_limit_nisa": 0.0, 
+    "limit_val_nisa_yen": 0.0,  # 金額用の値
+    "limit_val_nisa_pct": 4.0,  # ％用の値
+    
     "limit_mode_other": "年額定額 (万円)",
-    "withdraw_limit_other": 20.0,
+    "limit_val_other_yen": 20.0,
+    "limit_val_other_pct": 4.0,
+
     "inc1_a": 55, "inc1_v": 500, "inc2_a": 0, "inc2_v": 0, "inc3_a": 0, "inc3_v": 0,
     "dec1_a": 66, "dec1_v": 1000, "dec2_a": 0, "dec2_v": 0, "dec3_a": 0, "dec3_v": 0
 }
@@ -80,8 +85,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 💰 簡易資産シミュレータ v2.3")
-    st.caption("Ver. Advanced Withdrawal Strategy (3-Way Limit)")
+    st.markdown("### 💰 簡易資産シミュレータ v2.4")
+    st.caption("Ver. Improved Input UI (Separate Yen/% Fields)")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -201,42 +206,46 @@ def main():
             paypay_start_age = st.number_input("他運用 解禁年齢", 50, 100, key="paypay_start_age")
         
         st.markdown("---")
-        st.write("▼ 取り崩し上限設定 (3つの方式から選択)")
+        st.write("▼ 取り崩し上限設定")
         
-        # --- NISA上限設定 ---
+        # --- NISA上限設定 (UI改善版) ---
         st.markdown("**新NISA の年間上限**")
         c_n_mode, c_n_val = st.columns([3, 2])
         limit_mode_options = ["年額定額 (万円)", "総資産比率 (%)", "残高比率 (%)"]
         
+        # モード選択
         limit_mode_nisa = c_n_mode.selectbox("NISA上限方式", limit_mode_options, key="limit_mode_nisa", label_visibility="collapsed")
-        withdraw_limit_nisa = c_n_val.number_input("NISA上限値", 0.0, 10000.0, step=0.1, key="withdraw_limit_nisa", label_visibility="collapsed")
         
+        # モードに応じて入力欄を切り替え（別々のキーで保存）
         if limit_mode_nisa == "年額定額 (万円)":
-            st.caption(f"年間 **{withdraw_limit_nisa:.0f}万円** まで取り崩します。(0は無制限)")
-            nisa_limit_val = withdraw_limit_nisa * 10000
-        elif limit_mode_nisa == "総資産比率 (%)":
-            st.caption(f"その年の **総資産の {withdraw_limit_nisa:.1f}%** まで取り崩します。")
-            nisa_limit_val = withdraw_limit_nisa
+            limit_val_nisa = c_n_val.number_input("NISA金額", 0.0, 10000.0, step=10.0, key="limit_val_nisa_yen", label_visibility="collapsed", help="年間何万円まで取り崩すか (0は無制限)")
+            st.caption(f"年間 **{limit_val_nisa:.0f}万円** まで取り崩します。")
+            nisa_limit_yen_calc = limit_val_nisa * 10000
         else:
-            st.caption(f"その年の **NISA残高の {withdraw_limit_nisa:.1f}%** まで取り崩します。")
-            nisa_limit_val = withdraw_limit_nisa
+            limit_val_nisa = c_n_val.number_input("NISA割合", 0.0, 100.0, step=0.1, key="limit_val_nisa_pct", label_visibility="collapsed", help="資産の何％まで取り崩すか")
+            if limit_mode_nisa == "総資産比率 (%)":
+                st.caption(f"その年の **総資産の {limit_val_nisa:.1f}%** まで。")
+            else:
+                st.caption(f"その年の **NISA残高の {limit_val_nisa:.1f}%** まで。")
+            nisa_limit_yen_calc = limit_val_nisa # ％の値をそのまま渡す（計算ロジックで処理）
 
-        # --- 他運用上限設定 ---
+        # --- 他運用上限設定 (UI改善版) ---
         st.markdown("**他運用 の年間上限**")
         c_o_mode, c_o_val = st.columns([3, 2])
         
         limit_mode_other = c_o_mode.selectbox("他運用上限方式", limit_mode_options, key="limit_mode_other", label_visibility="collapsed")
-        withdraw_limit_other = c_o_val.number_input("他運用上限値", 0.0, 10000.0, step=0.1, key="withdraw_limit_other", label_visibility="collapsed")
         
         if limit_mode_other == "年額定額 (万円)":
-            st.caption(f"年間 **{withdraw_limit_other:.0f}万円** まで取り崩します。(0は無制限)")
-            other_limit_val = withdraw_limit_other * 10000
-        elif limit_mode_other == "総資産比率 (%)":
-            st.caption(f"その年の **総資産の {withdraw_limit_other:.1f}%** まで取り崩します。")
-            other_limit_val = withdraw_limit_other
+            limit_val_other = c_o_val.number_input("他運用金額", 0.0, 10000.0, step=10.0, key="limit_val_other_yen", label_visibility="collapsed", help="年間何万円まで取り崩すか (0は無制限)")
+            st.caption(f"年間 **{limit_val_other:.0f}万円** まで取り崩します。")
+            other_limit_yen_calc = limit_val_other * 10000
         else:
-            st.caption(f"その年の **他運用残高の {withdraw_limit_other:.1f}%** まで取り崩します。")
-            other_limit_val = withdraw_limit_other
+            limit_val_other = c_o_val.number_input("他運用割合", 0.0, 100.0, step=0.1, key="limit_val_other_pct", label_visibility="collapsed", help="資産の何％まで取り崩すか")
+            if limit_mode_other == "総資産比率 (%)":
+                st.caption(f"その年の **総資産の {limit_val_other:.1f}%** まで。")
+            else:
+                st.caption(f"その年の **他運用残高の {limit_val_other:.1f}%** まで。")
+            other_limit_yen_calc = limit_val_other
 
     with tab5:
         st.subheader("💰 臨時収入 (3枠)")
@@ -383,9 +392,7 @@ def main():
             def calc_actual_limit(mode, val, current_asset, total_assets):
                 if mode == "年額定額 (万円)":
                     if val == 0: return float('inf') # 0なら無制限
-                    return val # 万円単位は後で合わせる? いや、UIで計算済みとするか、ここで計算するか
-                    # UIで既に万円単位で入力されているが、ロジック内で合わせる方が安全
-                    # いや、変数 nisa_limit_val 等はUIで処理済み
+                    return val # 既に円単位で渡ってきていると仮定
                 elif mode == "総資産比率 (%)":
                     return total_assets * (val / 100)
                 elif mode == "残高比率 (%)":
@@ -393,10 +400,11 @@ def main():
                 return float('inf')
 
             # NISAと他運用のその年の上限額(円)を決定
-            limit_nisa_yen = calc_actual_limit(limit_mode_nisa, nisa_limit_val, nisa, current_total_investments)
-            limit_other_yen = calc_actual_limit(limit_mode_other, other_limit_val, paypay, current_total_investments)
+            # UI側で金額モードの場合は既に円単位で格納されている変数を利用
+            limit_nisa_yen = calc_actual_limit(limit_mode_nisa, nisa_limit_yen_calc, nisa, current_total_investments)
+            limit_other_yen = calc_actual_limit(limit_mode_other, other_limit_yen_calc, paypay, current_total_investments)
 
-            # 引出し処理関数 (計算済みの上限額を使う)
+            # 引出し処理関数
             def withdraw_asset_logic(needed, current_val, principal_val, is_nisa, limit_yen):
                 can_pay = min(needed, current_val, limit_yen)
                 
