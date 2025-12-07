@@ -58,7 +58,7 @@ def get_download_json():
     return json.dumps(save_data, indent=4, ensure_ascii=False)
 
 # --- メインアプリ ---
-st.set_page_config(page_title="簡易資産シミュレータ v5.0", page_icon="🌷", layout="wide")
+st.set_page_config(page_title="簡易資産シミュレータ v5.1", page_icon="🌷", layout="wide")
 
 def main():
     if "first_load_done" not in st.session_state:
@@ -67,7 +67,7 @@ def main():
                 st.session_state[key] = value
         st.session_state["first_load_done"] = True
     
-    # ★デザインカスタマイズ (Soft Elegant Theme)
+    # ★デザインカスタマイズ
     st.markdown("""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500&display=swap');
@@ -75,10 +75,8 @@ def main():
         /* 全体のフォントと背景 */
         html, body, [class*="css"] {
             font-family: 'Noto Sans JP', sans-serif;
-            color: #5d5555; /* 柔らかいチャコールグレー */
+            color: #5d5555;
         }
-        
-        /* 背景色: ほんのりサクラ色 + ドット柄 */
         .stApp {
             background-color: #fffbfb;
             background-image: radial-gradient(#fce7f3 1px, transparent 1px);
@@ -87,17 +85,17 @@ def main():
 
         /* サイドバー */
         [data-testid="stSidebar"] {
-            background-color: #fff0f5; /* Lavender Blush */
+            background-color: #fff0f5;
             border-right: 1px solid #fbcfe8;
         }
         [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
             color: #9d5b75 !important;
         }
 
-        /* 見出し: 明朝体でエレガントに */
+        /* 見出し */
         h1, h2, h3 {
             font-family: 'Shippori Mincho', serif;
-            color: #831843 !important; /* 上品なローズレッド */
+            color: #831843 !important;
             font-weight: 700 !important;
         }
         h4, h5, h6 {
@@ -105,49 +103,56 @@ def main():
             font-weight: 600 !important;
         }
         
-        /* カードデザイン（Metrics）: 丸みと柔らかい影 */
+        /* カードデザイン（Metrics） */
         [data-testid="stMetric"] {
             background-color: #ffffff;
             border: 1px solid #fce7f3;
-            border-radius: 20px; /* 大きく丸く */
+            border-radius: 20px;
             padding: 16px;
-            box-shadow: 0 4px 15px rgba(244, 114, 182, 0.1); /* ピンク系の影 */
+            box-shadow: 0 4px 15px rgba(244, 114, 182, 0.1);
         }
         [data-testid="stMetricLabel"] {
             font-size: 0.9rem !important;
-            color: #9d8189 !important; /* くすみピンクグレー */
+            color: #9d8189 !important;
             font-weight: 500;
         }
         [data-testid="stMetricValue"] {
             font-size: 1.8rem !important;
             color: #831843 !important;
-            font-family: 'Shippori Mincho', serif; /* 数字も明朝体で美しく */
+            font-family: 'Shippori Mincho', serif;
             font-weight: 700;
         }
         [data-testid="stMetricDelta"] {
-            color: #10b981 !important; /* 落ち着いたグリーン */
+            color: #10b981 !important;
         }
 
-        /* タブデザイン */
+        /* ★タブデザインの改良（折り返し・グリッド化） */
         .stTabs [data-baseweb="tab-list"] {
             border-bottom: 2px solid #fbcfe8;
-            gap: 15px;
+            gap: 8px;
+            flex-wrap: wrap; /* これで折り返しされます */
         }
         .stTabs [data-baseweb="tab"] {
-            background-color: transparent;
+            background-color: rgba(255, 255, 255, 0.6);
             color: #9d8189;
             font-weight: 500;
-            padding: 10px 10px;
-            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid transparent;
             font-family: 'Shippori Mincho', serif;
+            flex-grow: 1; /* 横幅いっぱいに広げる */
+            text-align: center;
+            justify-content: center;
         }
         .stTabs [aria-selected="true"] {
-            color: #db2777 !important; /* ピンク */
-            border-bottom: 3px solid #db2777;
+            background-color: #fff !important;
+            color: #db2777 !important;
+            border: 1px solid #fbcfe8;
+            box-shadow: 0 2px 5px rgba(219, 39, 119, 0.15);
             font-weight: 700;
         }
 
-        /* カスタムカード（オマケタブ用） */
+        /* カスタムカード */
         .custom-card {
             background-color: #ffffff;
             border: 1px solid #fce7f3;
@@ -157,7 +162,7 @@ def main():
             box-shadow: 0 6px 20px rgba(244, 114, 182, 0.15);
         }
 
-        /* ボタン: グラデーション */
+        /* ボタン */
         .stButton button {
             background: linear-gradient(to right, #f472b6, #db2777);
             color: white !important;
@@ -171,7 +176,6 @@ def main():
             transform: translateY(-1px);
         }
         
-        /* ダウンロードボタン等の文字色調整 */
         [data-testid="stDownloadButton"] button {
              color: white !important;
         }
@@ -179,7 +183,7 @@ def main():
         /* 入力フォーム */
         .stNumberInput input, .stSelectbox div[data-baseweb="select"] {
             border-radius: 12px;
-            border: 1px solid #f9a8d4 !important; /* 薄いピンクの枠線 */
+            border: 1px solid #f9a8d4 !important;
             background-color: #fffbff;
         }
 
@@ -191,8 +195,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("🌷 簡易資産シミュレータ v5.0")
-    st.caption("Soft & Elegant Design Edition")
+    st.title("🌷 簡易資産シミュレータ v5.1")
+    st.caption("Soft & Elegant Design Edition (Tab Wrap Fixed)")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -216,7 +220,7 @@ def main():
     
     st.sidebar.markdown("---") 
     
-    # アイコンも柔らかいものに変更
+    # タブ (折り返し対応)
     tab1, tab2, tab3, tab4, tab5, tab6 = st.sidebar.tabs([
         "👤 基本", "🏠 収支", "🌱 積立", "🍂 取崩", "🎀 臨時", "✨ オマケ"
     ])
