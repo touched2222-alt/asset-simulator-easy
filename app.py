@@ -58,7 +58,7 @@ def get_download_json():
     return json.dumps(save_data, indent=4, ensure_ascii=False)
 
 # --- メインアプリ ---
-st.set_page_config(page_title="簡易資産シミュレータ v5.1", page_icon="🌷", layout="wide")
+st.set_page_config(page_title="簡易資産シミュレータ v5.2", page_icon="🌷", layout="wide")
 
 def main():
     if "first_load_done" not in st.session_state:
@@ -67,136 +67,148 @@ def main():
                 st.session_state[key] = value
         st.session_state["first_load_done"] = True
     
-    # ★デザインカスタマイズ
+    # ★デザインカスタマイズ (Arrow Breadcrumb Style)
     st.markdown("""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500&display=swap');
         
-        /* 全体のフォントと背景 */
+        /* ベース設定 */
         html, body, [class*="css"] {
             font-family: 'Noto Sans JP', sans-serif;
             color: #5d5555;
         }
         .stApp {
-            background-color: #fffbfb;
-            background-image: radial-gradient(#fce7f3 1px, transparent 1px);
-            background-size: 20px 20px;
+            background-color: #fffbfb; /* ほんのりサクラ色 */
         }
 
         /* サイドバー */
         [data-testid="stSidebar"] {
             background-color: #fff0f5;
-            border-right: 1px solid #fbcfe8;
+            border-right: 1px solid #fce7f3;
         }
         [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-            color: #9d5b75 !important;
+            color: #be185d !important; /* 濃いローズ */
         }
 
-        /* 見出し */
+        /* 見出し: 明朝体 */
         h1, h2, h3 {
             font-family: 'Shippori Mincho', serif;
-            color: #831843 !important;
+            color: #9d174d !important;
             font-weight: 700 !important;
         }
         h4, h5, h6 {
-            color: #704855 !important;
+            color: #831843 !important;
             font-weight: 600 !important;
         }
         
-        /* カードデザイン（Metrics） */
+        /* --- ★ここがポイント：矢印型（パンくずリスト風）タブデザイン --- */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 4px;
+            border-bottom: none;
+            padding-bottom: 10px;
+            flex-wrap: wrap; /* 折り返し有効 */
+        }
+        
+        .stTabs [data-baseweb="tab"] {
+            background-color: #fdf2f8; /* 薄いピンク背景 */
+            color: #9d8189;
+            border: 1px solid #fbcfe8;
+            border-radius: 4px; /* 少しだけ角丸 */
+            padding: 8px 16px 8px 12px;
+            font-family: 'Shippori Mincho', serif;
+            font-weight: 500;
+            margin-right: 5px; /* 右に隙間 */
+            
+            /* 右側に矢印アイコンをつけるトリック */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+            min-width: 80px;
+        }
+        
+        /* 選択中のタブ */
+        .stTabs [aria-selected="true"] {
+            background-color: #fce7f3 !important; /* 濃いピンク背景 */
+            color: #be185d !important;
+            border: 1px solid #be185d;
+            font-weight: 700;
+            box-shadow: 0 2px 5px rgba(190, 24, 93, 0.15);
+        }
+        
+        /* タブの後ろに矢印記号（＞）をつける */
+        .stTabs [data-baseweb="tab"]::after {
+            content: "﹥"; /* 矢印文字 */
+            font-family: sans-serif;
+            font-weight: bold;
+            color: #f9a8d4;
+            margin-left: 10px;
+            font-size: 1.2em;
+            position: absolute;
+            right: 5px;
+        }
+        /* 選択中は矢印も濃く */
+        .stTabs [aria-selected="true"]::after {
+            color: #be185d;
+        }
+
+        /* --- その他デザイン --- */
+
+        /* カードデザイン */
         [data-testid="stMetric"] {
             background-color: #ffffff;
             border: 1px solid #fce7f3;
-            border-radius: 20px;
+            border-radius: 16px;
             padding: 16px;
-            box-shadow: 0 4px 15px rgba(244, 114, 182, 0.1);
+            box-shadow: 0 4px 10px rgba(244, 114, 182, 0.1);
         }
         [data-testid="stMetricLabel"] {
-            font-size: 0.9rem !important;
             color: #9d8189 !important;
-            font-weight: 500;
         }
         [data-testid="stMetricValue"] {
-            font-size: 1.8rem !important;
             color: #831843 !important;
             font-family: 'Shippori Mincho', serif;
-            font-weight: 700;
         }
         [data-testid="stMetricDelta"] {
-            color: #10b981 !important;
-        }
-
-        /* ★タブデザインの改良（折り返し・グリッド化） */
-        .stTabs [data-baseweb="tab-list"] {
-            border-bottom: 2px solid #fbcfe8;
-            gap: 8px;
-            flex-wrap: wrap; /* これで折り返しされます */
-        }
-        .stTabs [data-baseweb="tab"] {
-            background-color: rgba(255, 255, 255, 0.6);
-            color: #9d8189;
-            font-weight: 500;
-            padding: 8px 12px;
-            border-radius: 8px;
-            border: 1px solid transparent;
-            font-family: 'Shippori Mincho', serif;
-            flex-grow: 1; /* 横幅いっぱいに広げる */
-            text-align: center;
-            justify-content: center;
-        }
-        .stTabs [aria-selected="true"] {
-            background-color: #fff !important;
-            color: #db2777 !important;
-            border: 1px solid #fbcfe8;
-            box-shadow: 0 2px 5px rgba(219, 39, 119, 0.15);
-            font-weight: 700;
+            color: #059669 !important;
         }
 
         /* カスタムカード */
         .custom-card {
             background-color: #ffffff;
             border: 1px solid #fce7f3;
-            border-radius: 24px;
+            border-radius: 20px;
             padding: 24px;
             text-align: center;
-            box-shadow: 0 6px 20px rgba(244, 114, 182, 0.15);
+            box-shadow: 0 4px 15px rgba(244, 114, 182, 0.1);
         }
 
         /* ボタン */
         .stButton button {
-            background: linear-gradient(to right, #f472b6, #db2777);
-            color: white !important;
-            border: none;
+            background-color: #fbcfe8;
+            color: #831843 !important;
+            border: 1px solid #f9a8d4;
             border-radius: 20px;
             font-weight: 600;
-            transition: all 0.3s;
         }
         .stButton button:hover {
-            box-shadow: 0 4px 12px rgba(219, 39, 119, 0.4);
-            transform: translateY(-1px);
-        }
-        
-        [data-testid="stDownloadButton"] button {
-             color: white !important;
+            background-color: #f9a8d4;
+            border-color: #f472b6;
         }
 
         /* 入力フォーム */
         .stNumberInput input, .stSelectbox div[data-baseweb="select"] {
-            border-radius: 12px;
+            border-radius: 10px;
             border: 1px solid #f9a8d4 !important;
-            background-color: #fffbff;
+            background-color: #fff;
         }
-
-        /* 区切り線 */
-        hr {
-            margin: 2em 0;
-            border-color: #fbcfe8;
-        }
+        
+        hr { border-color: #fbcfe8; }
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("🌷 簡易資産シミュレータ v5.1")
-    st.caption("Soft & Elegant Design Edition (Tab Wrap Fixed)")
+    st.title("🌷 簡易資産シミュレータ v5.2")
+    st.caption("Ver. Arrow-Flow Tab Navigation")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -220,7 +232,7 @@ def main():
     
     st.sidebar.markdown("---") 
     
-    # タブ (折り返し対応)
+    # タブ (矢印デザイン適用済み)
     tab1, tab2, tab3, tab4, tab5, tab6 = st.sidebar.tabs([
         "👤 基本", "🏠 収支", "🌱 積立", "🍂 取崩", "🎀 臨時", "✨ オマケ"
     ])
