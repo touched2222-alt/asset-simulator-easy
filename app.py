@@ -57,8 +57,13 @@ def get_download_json():
             save_data[key] = st.session_state[key]
     return json.dumps(save_data, indent=4, ensure_ascii=False)
 
+def next_step_guide(text):
+    """次のステップへの誘導を表示する関数"""
+    st.markdown("---")
+    st.info(f"👉 **入力完了ですか？ タブを押して『{text}』へ進んでください**")
+
 # --- メインアプリ ---
-st.set_page_config(page_title="簡易資産シミュレータ v5.3", page_icon="🌷", layout="wide")
+st.set_page_config(page_title="簡易資産シミュレータ v5.4", page_icon="🌷", layout="wide")
 
 def main():
     if "first_load_done" not in st.session_state:
@@ -67,12 +72,11 @@ def main():
                 st.session_state[key] = value
         st.session_state["first_load_done"] = True
     
-    # ★デザインカスタマイズ (Arrow Flow Steps)
+    # ★デザインカスタマイズ (Step Process Flow)
     st.markdown("""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500&display=swap');
         
-        /* ベース設定 */
         html, body, [class*="css"] {
             font-family: 'Noto Sans JP', sans-serif;
             color: #5d5555;
@@ -81,7 +85,6 @@ def main():
             background-color: #fffbfb;
         }
 
-        /* サイドバー */
         [data-testid="stSidebar"] {
             background-color: #fff0f5;
             border-right: 1px solid #fce7f3;
@@ -90,7 +93,6 @@ def main():
             color: #be185d !important;
         }
 
-        /* 見出し */
         h1, h2, h3 {
             font-family: 'Shippori Mincho', serif;
             color: #9d174d !important;
@@ -101,61 +103,58 @@ def main():
             font-weight: 600 !important;
         }
         
-        /* --- ★ここがポイント：矢印型（シェブロン）タブデザイン --- */
+        /* --- ★ステップフロー型タブデザイン --- */
         
-        /* タブリストの隙間をなくし、はみ出しを許容 */
         .stTabs [data-baseweb="tab-list"] {
             gap: 0px;
             border-bottom: none;
             padding-bottom: 20px;
-            overflow: visible;
+            flex-wrap: wrap;
         }
         
-        /* タブ本体（基本形状：矢印） */
         .stTabs [data-baseweb="tab"] {
-            background-color: #fce7f3; /* 未選択：薄いピンク */
+            background-color: #fdf2f8; 
             color: #9d8189;
             border: none;
-            border-radius: 0; /* 角丸なし */
-            padding: 10px 10px 10px 25px; /* 左側に切り込み分の余白 */
-            margin-right: -15px; /* 隣のタブと重ねる */
-            font-family: 'Shippori Mincho', serif;
+            border-radius: 0;
+            padding: 12px 10px 12px 25px; /* 高さを少し増やす */
+            margin-right: -12px;
+            font-family: 'Noto Sans JP', sans-serif;
             font-weight: 600;
+            font-size: 0.9rem;
             
-            /* 矢印の形に切り抜く魔法の呪文 */
+            /* 矢印形状 */
             clip-path: polygon(90% 0, 100% 50%, 90% 100%, 0% 100%, 10% 50%, 0% 0%);
             
-            /* 重なり順序の調整 */
             z-index: 1;
             transition: all 0.2s ease;
             flex-grow: 1;
             justify-content: center;
             text-align: center;
+            min-width: 100px;
         }
 
-        /* 最初のタブだけ左側を平らにする */
         .stTabs [data-baseweb="tab"]:first-child {
             clip-path: polygon(90% 0, 100% 50%, 90% 100%, 0% 100%, 0% 0%);
             padding-left: 10px;
         }
 
-        /* ホバー時 */
+        /* 選択中のタブ */
+        .stTabs [aria-selected="true"] {
+            background: linear-gradient(to right, #be185d, #db2777) !important; /* グラデーション背景 */
+            color: white !important;
+            z-index: 10;
+            text-shadow: 0px 1px 2px rgba(0,0,0,0.2);
+        }
+        
+        /* タブごとの色味変化（擬似的にnth-childで指定するのはStreamlitの構造上難しいが、ホバーで表現） */
         .stTabs [data-baseweb="tab"]:hover {
             background-color: #fbcfe8;
             color: #831843;
-            z-index: 2; /* ホバー時は手前に */
+            z-index: 5;
         }
 
-        /* 選択中のタブ（濃い色にする） */
-        .stTabs [aria-selected="true"] {
-            background-color: #be185d !important; /* 濃いローズ */
-            color: white !important;
-            z-index: 10; /* 最前面へ */
-        }
-
-        /* --- その他デザイン --- */
-
-        /* カードデザイン */
+        /* --- その他 --- */
         [data-testid="stMetric"] {
             background-color: #ffffff;
             border: 1px solid #fce7f3;
@@ -163,18 +162,10 @@ def main():
             padding: 16px;
             box-shadow: 0 4px 10px rgba(244, 114, 182, 0.1);
         }
-        [data-testid="stMetricLabel"] {
-            color: #9d8189 !important;
-        }
         [data-testid="stMetricValue"] {
             color: #831843 !important;
             font-family: 'Shippori Mincho', serif;
         }
-        [data-testid="stMetricDelta"] {
-            color: #059669 !important;
-        }
-
-        /* カスタムカード */
         .custom-card {
             background-color: #ffffff;
             border: 1px solid #fce7f3;
@@ -183,8 +174,6 @@ def main():
             text-align: center;
             box-shadow: 0 4px 15px rgba(244, 114, 182, 0.1);
         }
-
-        /* ボタン */
         .stButton button {
             background-color: #fbcfe8;
             color: #831843 !important;
@@ -192,20 +181,17 @@ def main():
             border-radius: 20px;
             font-weight: 600;
         }
-        
-        /* 入力フォーム */
         .stNumberInput input, .stSelectbox div[data-baseweb="select"] {
             border-radius: 10px;
             border: 1px solid #f9a8d4 !important;
             background-color: #fff;
         }
-        
         hr { border-color: #fbcfe8; }
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("🌷 簡易資産シミュレータ v5.3")
-    st.caption("Ver. Process Flow Arrow Tabs")
+    st.title("🌷 簡易資産シミュレータ v5.4")
+    st.caption("Ver. Step-by-Step Navigation Guide")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -229,15 +215,14 @@ def main():
     
     st.sidebar.markdown("---") 
     
-    # タブ (ステップフロー型)
-    # 番号をつけることで、順序がさらに分かりやすくなります
+    # ★ タブ名に「STEP」をつけて順序を強制
     tab1, tab2, tab3, tab4, tab5, tab6 = st.sidebar.tabs([
-        "1. 基本", "2. 収支", "3. 積立", "4. 取崩", "5. 臨時", "6. オマケ"
+        "STEP1.基本", "STEP2.収支", "STEP3.積立", "STEP4.取崩", "STEP5.臨時", "STEP6.完了"
     ])
 
     # --- 入力 UI ---
     with tab1:
-        st.subheader("👤 基本情報")
+        st.subheader("👤 基本情報の入力")
         current_age = st.number_input("現在年齢", 20, 80, key="current_age", help="シミュレーションを開始する年齢です。")
         end_age = st.number_input("終了年齢", 80, 120, key="end_age", help="シミュレーションを何歳まで行うか設定します。")
         
@@ -255,9 +240,12 @@ def main():
         r_nisa = st.number_input("新NISA年利", 0.0, 30.0, step=0.1, format="%.2f", key="r_nisa", help="新NISAの想定リターンです。") / 100
         r_paypay = st.number_input("他運用年利", 0.0, 50.0, step=0.1, format="%.2f", key="r_paypay", help="その他の投資資産の想定リターンです。") / 100
         inflation = st.number_input("インフレ率", -5.0, 20.0, step=0.1, format="%.2f", key="inflation", help="毎年の生活費の上昇率です。") / 100
+        
+        # ★ 次へ誘導
+        next_step_guide("STEP2. 収支")
 
     with tab2:
-        st.subheader("🏠 働き方と収入")
+        st.subheader("🏢 働き方と収入の入力")
         age_work_last = st.number_input("何歳まで働く？", 50, 90, key="age_work_last", help="給与収入が得られる最後の年齢です。")
         
         st.markdown("##### 手取り年収 (万円)")
@@ -294,6 +282,9 @@ def main():
         exp_50s = st.number_input("50代 特別出費", 0, 5000, step=10, key="exp_50s", help=exp_help) * 10000
         exp_60s = st.number_input("60歳〜 特別出費", 0, 5000, step=10, key="exp_60s", help=exp_help) * 10000
 
+        # ★ 次へ誘導
+        next_step_guide("STEP3. 積立")
+
     with tab3:
         st.subheader("🌱 積立投資の設定")
         col_t1, col_t2 = st.columns(2)
@@ -324,8 +315,11 @@ def main():
         dam_2 = st.number_input("50代 最低貯蓄(万)", 0, 10000, step=50, key="dam_2", help=dam_help) * 10000
         dam_3 = st.number_input("60歳〜 最低貯蓄(万)", 0, 10000, step=50, key="dam_3", help=dam_help) * 10000
 
+        # ★ 次へ誘導
+        next_step_guide("STEP4. 取崩")
+
     with tab4:
-        st.subheader("🍂 取り崩し・補填ルール")
+        st.subheader("🍂 取崩し・補填ルール")
         priority = st.radio("取り崩し優先順位 (不足時)", ["新NISAから先に使う", "他運用から先に使う"], horizontal=True, key="priority", help="現金が足りなくなった時、どちらの資産を優先して売却するかを選びます。")
         
         col_out1, col_out2 = st.columns(2)
@@ -389,8 +383,13 @@ def main():
         tax_rate_other = st.number_input("他運用 取崩し税率", 0.0, 50.0, step=0.1, format="%.1f", key="tax_rate_other", 
             help="現金化して引き出す場合の税金です。利益に対して約20%が目安です。") / 100
 
+        # ★ 次へ誘導
+        next_step_guide("STEP5. 臨時")
+
     with tab5:
-        st.subheader("🎀 臨時収入 (3枠)")
+        st.subheader("🎀 臨時収入・支出")
+        st.caption("イベントごとの大きな出費や収入があれば入力してください。なければスキップ可能です。")
+        
         c_i1_a, c_i1_v = st.columns([1, 2])
         inc_help = "退職金、遺産相続、満期保険金など、特定の年齢で一度だけ入る大きな収入です。"
         inc1_age = c_i1_a.number_input("収入① 年齢", 0, 100, key="inc1_a", help="収入が発生する年齢")
@@ -405,7 +404,7 @@ def main():
         inc3_val = c_i3_v.number_input("収入③ 金額(万)", 0, 10000, step=100, key="inc3_v") * 10000
         
         st.markdown("---")
-        st.subheader("💸 臨時支出 (3枠)")
+        
         dec_help = "子供の学費入学金、住宅購入頭金、リフォーム費用など、特定の年齢で発生する大きな出費です。"
         c_d1_a, c_d1_v = st.columns([1, 2])
         dec1_age = c_d1_a.number_input("支出① 年齢", 0, 100, key="dec1_a", help="支出が発生する年齢")
@@ -419,9 +418,12 @@ def main():
         dec3_age = c_d3_a.number_input("支出③ 年齢", 0, 100, key="dec3_a")
         dec3_val = c_d3_v.number_input("支出③ 金額(万)", 0, 10000, step=100, key="dec3_v") * 10000
 
+        # ★ 次へ誘導
+        next_step_guide("STEP6. 完了・オマケ")
+
     # ★ オマケタブ (解説付き・デザイン調整)
     with tab6:
-        st.subheader("✨ 必要資産額シミュレータ")
+        st.subheader("✨ 必要資産額シミュレータ (オマケ)")
         
         st.markdown("#### ステップ1: 目標の設定")
         target_yearly_income = st.number_input("希望する年間取崩し額 (万円)", 0, 5000, 240, step=10, format="%d", help="配当金や売却益で、毎年受け取りたい金額（手取り）を入力します。")
@@ -433,7 +435,6 @@ def main():
         if target_interest_rate > 0:
             required_asset = (target_yearly_income * 10000) / (target_interest_rate / 100)
             
-            # ★デザイン変更: 女性向けソフトデザインカード
             st.markdown(f"""
                 <div class="custom-card">
                     <h4 style="color: #9d5b75; margin-bottom: 5px; font-family: 'Shippori Mincho', serif;">必要な総資産額</h4>
