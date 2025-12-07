@@ -21,8 +21,11 @@ DEFAULT_CONFIG = {
     "dam_1": 700, "dam_2": 700, "dam_3": 500,
     "priority": "新NISAから先に使う",
     "nisa_start_age": 65, "paypay_start_age": 60,
-    "withdraw_limit_nisa": 0, 
-    "withdraw_limit_other": 20,
+    # ★変更: 上限値だけでなく「方式」も保存
+    "limit_mode_nisa": "年額定額 (万円)",
+    "withdraw_limit_nisa": 0.0, 
+    "limit_mode_other": "年額定額 (万円)",
+    "withdraw_limit_other": 20.0,
     "inc1_a": 55, "inc1_v": 500, "inc2_a": 0, "inc2_v": 0, "inc3_a": 0, "inc3_v": 0,
     "dec1_a": 66, "dec1_v": 1000, "dec2_a": 0, "dec2_v": 0, "dec3_a": 0, "dec3_v": 0
 }
@@ -35,7 +38,6 @@ def load_uploaded_settings(uploaded_file):
         bytes_data = uploaded_file.getvalue()
         data = json.loads(bytes_data)
         
-        # 読み込んだデータをsession_stateに反映
         count = 0
         for key, value in data.items():
             if key in st.session_state:
@@ -58,14 +60,14 @@ def get_download_json():
 st.set_page_config(page_title="簡易資産シミュレータ", page_icon="💰", layout="wide")
 
 def main():
-    # 1. アプリ起動時の初期化 (session_stateが空ならデフォルト値を入れる)
+    # 1. アプリ起動時の初期化
     if "first_load_done" not in st.session_state:
         for key, value in DEFAULT_CONFIG.items():
             if key not in st.session_state:
                 st.session_state[key] = value
         st.session_state["first_load_done"] = True
     
-    # 2. CSSスタイル設定 (0.5remのエラー修正済み)
+    # 2. CSSスタイル設定
     st.markdown("""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
@@ -78,16 +80,14 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 💰 簡易資産シミュレータ v2.22")
-    st.caption("Ver. Config Download/Upload in Sidebar")
+    st.markdown("### 💰 簡易資産シミュレータ v2.3")
+    st.caption("Ver. Advanced Withdrawal Strategy (3-Way Limit)")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
     
-    # ★ ここにダウンロード・アップロード機能を配置
+    # ダウンロード・アップロード機能
     st.sidebar.subheader("📁 設定ファイル")
-    
-    # ダウンロードボタン
     st.sidebar.download_button(
         label="💾 設定をダウンロード (PCに保存)",
         data=get_download_json(),
@@ -95,7 +95,6 @@ def main():
         mime="application/json"
     )
 
-    # アップロードボタン
     uploaded_file = st.sidebar.file_uploader(
         "📤 設定ファイルをアップロード", 
         type=["json"], 
@@ -107,11 +106,10 @@ def main():
         load_uploaded_settings(uploaded_file)
     
     st.sidebar.markdown("---") 
-    # ----------------------
     
     tab1, tab2, tab3, tab4, tab5 = st.sidebar.tabs(["基本・初期", "収入・支出", "積立設定", "取崩し戦略", "臨時収支"])
 
-    # --- 入力 UI (st.session_state キーを利用して設定値を保持・更新) ---
+    # --- 入力 UI ---
     with tab1:
         st.subheader("👤 基本情報")
         current_age = st.number_input("現在年齢", 20, 80, key="current_age")
@@ -195,18 +193,50 @@ def main():
     with tab4:
         st.subheader("🍂 取り崩し・補填ルール")
         priority = st.radio("取り崩し優先順位 (不足時)", ["新NISAから先に使う", "他運用から先に使う"], horizontal=True, key="priority")
+        
         col_out1, col_out2 = st.columns(2)
         with col_out1:
             nisa_start_age = st.number_input("新NISA 解禁年齢", 50, 100, key="nisa_start_age")
         with col_out2:
             paypay_start_age = st.number_input("他運用 解禁年齢", 50, 100, key="paypay_start_age")
+        
         st.markdown("---")
-        st.write("▼ 年間取り崩し上限 (0は無制限)")
-        c_lim1, c_lim2 = st.columns(2)
-        with c_lim1:
-            withdraw_limit_nisa = st.number_input("新NISA 上限(万円)", 0, 5000, step=10, key="withdraw_limit_nisa") * 10000
-        with c_lim2:
-            withdraw_limit_other = st.number_input("他運用 上限(万円)", 0, 5000, step=10, key="withdraw_limit_other") * 10000
+        st.write("▼ 取り崩し上限設定 (3つの方式から選択)")
+        
+        # --- NISA上限設定 ---
+        st.markdown("**新NISA の年間上限**")
+        c_n_mode, c_n_val = st.columns([3, 2])
+        limit_mode_options = ["年額定額 (万円)", "総資産比率 (%)", "残高比率 (%)"]
+        
+        limit_mode_nisa = c_n_mode.selectbox("NISA上限方式", limit_mode_options, key="limit_mode_nisa", label_visibility="collapsed")
+        withdraw_limit_nisa = c_n_val.number_input("NISA上限値", 0.0, 10000.0, step=0.1, key="withdraw_limit_nisa", label_visibility="collapsed")
+        
+        if limit_mode_nisa == "年額定額 (万円)":
+            st.caption(f"年間 **{withdraw_limit_nisa:.0f}万円** まで取り崩します。(0は無制限)")
+            nisa_limit_val = withdraw_limit_nisa * 10000
+        elif limit_mode_nisa == "総資産比率 (%)":
+            st.caption(f"その年の **総資産の {withdraw_limit_nisa:.1f}%** まで取り崩します。")
+            nisa_limit_val = withdraw_limit_nisa
+        else:
+            st.caption(f"その年の **NISA残高の {withdraw_limit_nisa:.1f}%** まで取り崩します。")
+            nisa_limit_val = withdraw_limit_nisa
+
+        # --- 他運用上限設定 ---
+        st.markdown("**他運用 の年間上限**")
+        c_o_mode, c_o_val = st.columns([3, 2])
+        
+        limit_mode_other = c_o_mode.selectbox("他運用上限方式", limit_mode_options, key="limit_mode_other", label_visibility="collapsed")
+        withdraw_limit_other = c_o_val.number_input("他運用上限値", 0.0, 10000.0, step=0.1, key="withdraw_limit_other", label_visibility="collapsed")
+        
+        if limit_mode_other == "年額定額 (万円)":
+            st.caption(f"年間 **{withdraw_limit_other:.0f}万円** まで取り崩します。(0は無制限)")
+            other_limit_val = withdraw_limit_other * 10000
+        elif limit_mode_other == "総資産比率 (%)":
+            st.caption(f"その年の **総資産の {withdraw_limit_other:.1f}%** まで取り崩します。")
+            other_limit_val = withdraw_limit_other
+        else:
+            st.caption(f"その年の **他運用残高の {withdraw_limit_other:.1f}%** まで取り崩します。")
+            other_limit_val = withdraw_limit_other
 
     with tab5:
         st.subheader("💰 臨時収入 (3枠)")
@@ -346,16 +376,33 @@ def main():
         if cash < 0:
             shortage = abs(cash)
             
-            def withdraw_asset_logic(needed, current_val, principal_val, is_nisa, limit_setting):
-                actual_limit = float('inf') if limit_setting == 0 else limit_setting
-                
-                # 資産の残高、不足額、年間上限額の最も小さい額を支払いに充てる
-                can_pay = min(needed, current_val, actual_limit)
+            # ★現在の総資産（投資資産）を計算
+            current_total_investments = nisa + paypay + k401
+
+            # ★上限額の計算関数 (その年の状況に応じて上限額を決定)
+            def calc_actual_limit(mode, val, current_asset, total_assets):
+                if mode == "年額定額 (万円)":
+                    if val == 0: return float('inf') # 0なら無制限
+                    return val # 万円単位は後で合わせる? いや、UIで計算済みとするか、ここで計算するか
+                    # UIで既に万円単位で入力されているが、ロジック内で合わせる方が安全
+                    # いや、変数 nisa_limit_val 等はUIで処理済み
+                elif mode == "総資産比率 (%)":
+                    return total_assets * (val / 100)
+                elif mode == "残高比率 (%)":
+                    return current_asset * (val / 100)
+                return float('inf')
+
+            # NISAと他運用のその年の上限額(円)を決定
+            limit_nisa_yen = calc_actual_limit(limit_mode_nisa, nisa_limit_val, nisa, current_total_investments)
+            limit_other_yen = calc_actual_limit(limit_mode_other, other_limit_val, paypay, current_total_investments)
+
+            # 引出し処理関数 (計算済みの上限額を使う)
+            def withdraw_asset_logic(needed, current_val, principal_val, is_nisa, limit_yen):
+                can_pay = min(needed, current_val, limit_yen)
                 
                 new_val = current_val - can_pay
                 new_principal = principal_val
                 
-                # NISAの場合、元本を減らす（元本割れしないよう、比率で計算）
                 if is_nisa and current_val > 0 and can_pay > 0:
                     ratio = can_pay / current_val
                     new_principal = principal_val * (1 - ratio)
@@ -365,19 +412,19 @@ def main():
             # 優先順位分岐
             if priority == "新NISAから先に使う":
                 if age >= nisa_start_age:
-                    pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True, withdraw_limit_nisa)
+                    pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True, limit_nisa_yen)
                     shortage -= pay_nisa
                 
                 if age >= paypay_start_age:
-                    pay_other, paypay, _ = withdraw_asset_logic(shortage, paypay, 0, False, withdraw_limit_other)
+                    pay_other, paypay, _ = withdraw_asset_logic(shortage, paypay, 0, False, limit_other_yen)
                     shortage -= pay_other
             else:
                 if age >= paypay_start_age:
-                    pay_other, paypay, _ = withdraw_asset_logic(shortage, paypay, 0, False, withdraw_limit_other)
+                    pay_other, paypay, _ = withdraw_asset_logic(shortage, paypay, 0, False, limit_other_yen)
                     shortage -= pay_other
 
                 if age >= nisa_start_age:
-                    pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True, withdraw_limit_nisa)
+                    pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True, limit_nisa_yen)
                     shortage -= pay_nisa
             
             cash = -shortage
@@ -471,7 +518,8 @@ def main():
         3.  **つみたて枠（年120万）**：「NISA積立」で設定した金額が優先的に充てられます。
         4.  **成長枠（年240万）**：「最低貯蓄額」を超えた余剰金が、この枠を使って自動投資されます。
         5.  **現金不足時の「取り崩し」**：現金がマイナスになった場合、設定した優先順位に従って補填します。
-        6.  **積立停止**：現金がマイナス（借金）の年は、新規の積立投資を行いません。（※ただし、働いている期間は給与天引き感覚で積立を実行します）
+        6.  **取り崩し上限**：年額固定、総資産比率、残高比率の3パターンから選択できます。
+        7.  **積立停止**：現金がマイナス（借金）の年は、新規の積立投資を行いません。
         """)
 
 if __name__ == '__main__':
