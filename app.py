@@ -24,12 +24,15 @@ DEFAULT_CONFIG = {
     
     # 上限設定
     "limit_mode_nisa": "年額定額 (万円)",
-    "limit_val_nisa_yen": 0,    # 整数で管理
-    "limit_val_nisa_pct": 4.0,  # 小数で管理
+    "limit_val_nisa_yen": 0,
+    "limit_val_nisa_pct": 4.0,
     
     "limit_mode_other": "年額定額 (万円)",
     "limit_val_other_yen": 20,
     "limit_val_other_pct": 4.0,
+    
+    # ★追加: 他運用の取崩し税率
+    "tax_rate_other": 0.0,
 
     "inc1_a": 55, "inc1_v": 500, "inc2_a": 0, "inc2_v": 0, "inc3_a": 0, "inc3_v": 0,
     "dec1_a": 66, "dec1_v": 1000, "dec2_a": 0, "dec2_v": 0, "dec3_a": 0, "dec3_v": 0
@@ -79,8 +82,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 💰 簡易資産シミュレータ v2.6")
-    st.caption("Ver. Added Tooltips for User Guidance")
+    st.markdown("### 💰 簡易資産シミュレータ v2.7")
+    st.caption("Ver. Tax Consideration for Other Assets")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -90,12 +93,11 @@ def main():
         label="💾 設定をダウンロード (PCに保存)",
         data=get_download_json(),
         file_name="asset_simulator_config.json",
-        mime="application/json",
-        help="現在のすべての入力内容をJSONファイルとして保存します。後で読み込んだり、友人に送ったりできます。"
+        mime="application/json"
     )
     uploaded_file = st.sidebar.file_uploader(
         "📤 設定ファイルをアップロード", type=["json"], accept_multiple_files=False,
-        help="保存したJSONファイルを読み込んで、設定を復元します。"
+        help="ダウンロードしたJSONファイルを選択すると、設定が反映されます。"
     )
     if uploaded_file is not None:
         load_uploaded_settings(uploaded_file)
@@ -253,6 +255,11 @@ def main():
             else:
                 st.caption(f"その年の **他運用残高の {limit_val_other:.1f}%** まで")
             other_limit_yen_calc = limit_val_other
+        
+        # ★ 追加: 他運用税率設定
+        st.markdown("**他運用 取崩し税率 (%)**")
+        tax_rate_other = st.number_input("他運用 取崩し税率", 0.0, 50.0, step=0.1, format="%.1f", key="tax_rate_other", 
+            help="ポイント運用などをそのままポイントとして使う場合は非課税（0%）ですが、現金化して引き出す場合は課税対象となる可能性があります（例: 利益に対して約20%）。ここでは簡易的に「取り崩し額全体」に対する税率を設定します。") / 100
 
     with tab5:
         st.subheader("💰 臨時収入 (3枠)")
@@ -399,8 +406,7 @@ def main():
             def calc_actual_limit(mode, val, current_asset, total_assets):
                 if mode == "年額定額 (万円)":
                     if val == 0: return float('inf') 
-                    return val # UIで円単位入力処理済みと仮定したいが、変数は「limit_val_nisa_yen」など
-                    # 注意: 変数 *_yen_calc はUI側で「万円 -> 円」または「%」が入っている
+                    return val 
                 elif mode == "総資産比率 (%)":
                     return total_assets * (val / 100)
                 elif mode == "残高比率 (%)":
@@ -410,34 +416,46 @@ def main():
             limit_nisa_yen = calc_actual_limit(limit_mode_nisa, nisa_limit_yen_calc, nisa, current_total_investments)
             limit_other_yen = calc_actual_limit(limit_mode_other, other_limit_yen_calc, paypay, current_total_investments)
 
-            # 引出し処理
-            def withdraw_asset_logic(needed, current_val, principal_val, is_nisa, limit_yen):
-                can_pay = min(needed, current_val, limit_yen)
-                new_val = current_val - can_pay
+            # 引出し処理 (税率対応)
+            # tax_rateが 0.2 (20%) なら、1万円の現金を得るために 1 / (1-0.2) = 1.25万円 取り崩す必要がある
+            def withdraw_asset_logic(needed, current_val, principal_val, is_nisa, limit_yen, tax_rate=0.0):
+                # 必要な「手取り額」を得るための「取り崩し額（税引前）」を計算
+                gross_needed = needed / (1 - tax_rate) if (1 - tax_rate) > 0 else needed
+                
+                # 取り崩せる額は、残高、上限額、必要額（税引前）の最小値
+                can_withdraw_gross = min(gross_needed, current_val, limit_yen)
+                
+                # 実際に手に入る現金（税引後）
+                net_cash_obtained = can_withdraw_gross * (1 - tax_rate)
+                
+                new_val = current_val - can_withdraw_gross
                 new_principal = principal_val
                 
-                if is_nisa and current_val > 0 and can_pay > 0:
-                    ratio = can_pay / current_val
+                if is_nisa and current_val > 0 and can_withdraw_gross > 0:
+                    ratio = can_withdraw_gross / current_val
                     new_principal = principal_val * (1 - ratio)
                 
-                return can_pay, new_val, new_principal
+                # 返すのは「手に入れた現金」
+                return net_cash_obtained, new_val, new_principal
 
             # 優先順位分岐
             if priority == "新NISAから先に使う":
                 if age >= nisa_start_age:
-                    pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True, limit_nisa_yen)
+                    # NISAは非課税 (tax_rate=0)
+                    pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True, limit_nisa_yen, 0.0)
                     shortage -= pay_nisa
                 
                 if age >= paypay_start_age:
-                    pay_other, paypay, _ = withdraw_asset_logic(shortage, paypay, 0, False, limit_other_yen)
+                    # 他運用は課税あり
+                    pay_other, paypay, _ = withdraw_asset_logic(shortage, paypay, 0, False, limit_other_yen, tax_rate_other)
                     shortage -= pay_other
             else:
                 if age >= paypay_start_age:
-                    pay_other, paypay, _ = withdraw_asset_logic(shortage, paypay, 0, False, limit_other_yen)
+                    pay_other, paypay, _ = withdraw_asset_logic(shortage, paypay, 0, False, limit_other_yen, tax_rate_other)
                     shortage -= pay_other
 
                 if age >= nisa_start_age:
-                    pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True, limit_nisa_yen)
+                    pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True, limit_nisa_yen, 0.0)
                     shortage -= pay_nisa
             
             cash = -shortage
@@ -526,7 +544,8 @@ def main():
         4.  **成長枠（年240万）**：「最低貯蓄額」を超えた余剰金が、この枠を使って自動投資されます。
         5.  **現金不足時の「取り崩し」**：現金がマイナスになった場合、設定した優先順位に従って補填します。
         6.  **取り崩し上限**：年額固定、総資産比率、残高比率の3パターンから選択できます。
-        7.  **積立停止**：現金がマイナス（借金）の年は、新規の積立投資を行いません。
+        7.  **他運用の税金**：設定された税率分を差し引いて、手取り額で現金の不足を埋めます。
+        8.  **積立停止**：現金がマイナス（借金）の年は、新規の積立投資を行いません。
         """)
 
 if __name__ == '__main__':
