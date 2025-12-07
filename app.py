@@ -58,7 +58,7 @@ def get_download_json():
     return json.dumps(save_data, indent=4, ensure_ascii=False)
 
 # --- メインアプリ ---
-st.set_page_config(page_title="簡易資産シミュレータ v5.2", page_icon="🌷", layout="wide")
+st.set_page_config(page_title="簡易資産シミュレータ v5.3", page_icon="🌷", layout="wide")
 
 def main():
     if "first_load_done" not in st.session_state:
@@ -67,7 +67,7 @@ def main():
                 st.session_state[key] = value
         st.session_state["first_load_done"] = True
     
-    # ★デザインカスタマイズ (Arrow Breadcrumb Style)
+    # ★デザインカスタマイズ (Arrow Flow Steps)
     st.markdown("""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500&display=swap');
@@ -78,7 +78,7 @@ def main():
             color: #5d5555;
         }
         .stApp {
-            background-color: #fffbfb; /* ほんのりサクラ色 */
+            background-color: #fffbfb;
         }
 
         /* サイドバー */
@@ -87,10 +87,10 @@ def main():
             border-right: 1px solid #fce7f3;
         }
         [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-            color: #be185d !important; /* 濃いローズ */
+            color: #be185d !important;
         }
 
-        /* 見出し: 明朝体 */
+        /* 見出し */
         h1, h2, h3 {
             font-family: 'Shippori Mincho', serif;
             color: #9d174d !important;
@@ -101,55 +101,56 @@ def main():
             font-weight: 600 !important;
         }
         
-        /* --- ★ここがポイント：矢印型（パンくずリスト風）タブデザイン --- */
+        /* --- ★ここがポイント：矢印型（シェブロン）タブデザイン --- */
+        
+        /* タブリストの隙間をなくし、はみ出しを許容 */
         .stTabs [data-baseweb="tab-list"] {
-            gap: 4px;
+            gap: 0px;
             border-bottom: none;
-            padding-bottom: 10px;
-            flex-wrap: wrap; /* 折り返し有効 */
+            padding-bottom: 20px;
+            overflow: visible;
         }
         
+        /* タブ本体（基本形状：矢印） */
         .stTabs [data-baseweb="tab"] {
-            background-color: #fdf2f8; /* 薄いピンク背景 */
+            background-color: #fce7f3; /* 未選択：薄いピンク */
             color: #9d8189;
-            border: 1px solid #fbcfe8;
-            border-radius: 4px; /* 少しだけ角丸 */
-            padding: 8px 16px 8px 12px;
+            border: none;
+            border-radius: 0; /* 角丸なし */
+            padding: 10px 10px 10px 25px; /* 左側に切り込み分の余白 */
+            margin-right: -15px; /* 隣のタブと重ねる */
             font-family: 'Shippori Mincho', serif;
-            font-weight: 500;
-            margin-right: 5px; /* 右に隙間 */
+            font-weight: 600;
             
-            /* 右側に矢印アイコンをつけるトリック */
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            /* 矢印の形に切り抜く魔法の呪文 */
+            clip-path: polygon(90% 0, 100% 50%, 90% 100%, 0% 100%, 10% 50%, 0% 0%);
+            
+            /* 重なり順序の調整 */
+            z-index: 1;
+            transition: all 0.2s ease;
             flex-grow: 1;
-            min-width: 80px;
+            justify-content: center;
+            text-align: center;
         }
-        
-        /* 選択中のタブ */
+
+        /* 最初のタブだけ左側を平らにする */
+        .stTabs [data-baseweb="tab"]:first-child {
+            clip-path: polygon(90% 0, 100% 50%, 90% 100%, 0% 100%, 0% 0%);
+            padding-left: 10px;
+        }
+
+        /* ホバー時 */
+        .stTabs [data-baseweb="tab"]:hover {
+            background-color: #fbcfe8;
+            color: #831843;
+            z-index: 2; /* ホバー時は手前に */
+        }
+
+        /* 選択中のタブ（濃い色にする） */
         .stTabs [aria-selected="true"] {
-            background-color: #fce7f3 !important; /* 濃いピンク背景 */
-            color: #be185d !important;
-            border: 1px solid #be185d;
-            font-weight: 700;
-            box-shadow: 0 2px 5px rgba(190, 24, 93, 0.15);
-        }
-        
-        /* タブの後ろに矢印記号（＞）をつける */
-        .stTabs [data-baseweb="tab"]::after {
-            content: "﹥"; /* 矢印文字 */
-            font-family: sans-serif;
-            font-weight: bold;
-            color: #f9a8d4;
-            margin-left: 10px;
-            font-size: 1.2em;
-            position: absolute;
-            right: 5px;
-        }
-        /* 選択中は矢印も濃く */
-        .stTabs [aria-selected="true"]::after {
-            color: #be185d;
+            background-color: #be185d !important; /* 濃いローズ */
+            color: white !important;
+            z-index: 10; /* 最前面へ */
         }
 
         /* --- その他デザイン --- */
@@ -191,11 +192,7 @@ def main():
             border-radius: 20px;
             font-weight: 600;
         }
-        .stButton button:hover {
-            background-color: #f9a8d4;
-            border-color: #f472b6;
-        }
-
+        
         /* 入力フォーム */
         .stNumberInput input, .stSelectbox div[data-baseweb="select"] {
             border-radius: 10px;
@@ -207,8 +204,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("🌷 簡易資産シミュレータ v5.2")
-    st.caption("Ver. Arrow-Flow Tab Navigation")
+    st.title("🌷 簡易資産シミュレータ v5.3")
+    st.caption("Ver. Process Flow Arrow Tabs")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -232,9 +229,10 @@ def main():
     
     st.sidebar.markdown("---") 
     
-    # タブ (矢印デザイン適用済み)
+    # タブ (ステップフロー型)
+    # 番号をつけることで、順序がさらに分かりやすくなります
     tab1, tab2, tab3, tab4, tab5, tab6 = st.sidebar.tabs([
-        "👤 基本", "🏠 収支", "🌱 積立", "🍂 取崩", "🎀 臨時", "✨ オマケ"
+        "1. 基本", "2. 収支", "3. 積立", "4. 取崩", "5. 臨時", "6. オマケ"
     ])
 
     # --- 入力 UI ---
