@@ -79,8 +79,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 💰 簡易資産シミュレータ v2.5")
-    st.caption("Ver. Clean Integer/Float Inputs")
+    st.markdown("### 💰 簡易資産シミュレータ v2.6")
+    st.caption("Ver. Added Tooltips for User Guidance")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -90,11 +90,12 @@ def main():
         label="💾 設定をダウンロード (PCに保存)",
         data=get_download_json(),
         file_name="asset_simulator_config.json",
-        mime="application/json"
+        mime="application/json",
+        help="現在のすべての入力内容をJSONファイルとして保存します。後で読み込んだり、友人に送ったりできます。"
     )
     uploaded_file = st.sidebar.file_uploader(
         "📤 設定ファイルをアップロード", type=["json"], accept_multiple_files=False,
-        help="ダウンロードしたJSONファイルを選択すると、設定が反映されます。"
+        help="保存したJSONファイルを読み込んで、設定を復元します。"
     )
     if uploaded_file is not None:
         load_uploaded_settings(uploaded_file)
@@ -106,91 +107,101 @@ def main():
     # --- 入力 UI ---
     with tab1:
         st.subheader("👤 基本情報")
-        current_age = st.number_input("現在年齢", 20, 80, key="current_age")
-        end_age = st.number_input("終了年齢", 80, 120, key="end_age")
+        current_age = st.number_input("現在年齢", 20, 80, key="current_age", help="シミュレーションを開始する年齢です。")
+        end_age = st.number_input("終了年齢", 80, 120, key="end_age", help="シミュレーションを何歳まで行うか設定します。")
+        
         st.markdown("---")
         st.subheader("💰 現在の資産 (万円)")
-        ini_cash = st.number_input("貯蓄 (現金)", 0, 10000, step=10, key="ini_cash") * 10000
-        ini_401k = st.number_input("401k (確定拠出)", 0, 10000, step=10, key="ini_401k") * 10000
-        ini_nisa = st.number_input("新NISA", 0, 10000, step=10, key="ini_nisa") * 10000
-        ini_paypay = st.number_input("他運用 (ポイント運用など)", 0, 10000, step=10, key="ini_paypay") * 10000
+        ini_cash = st.number_input("貯蓄 (現金)", 0, 10000, step=10, key="ini_cash", help="現在保有している銀行預金や現金の合計額です。") * 10000
+        ini_401k = st.number_input("401k (確定拠出)", 0, 10000, step=10, key="ini_401k", help="iDeCoや企業型DCの現在の残高です。") * 10000
+        ini_nisa = st.number_input("新NISA", 0, 10000, step=10, key="ini_nisa", help="新NISA口座にある現在の資産残高です。") * 10000
+        ini_paypay = st.number_input("他運用 (ポイント運用など)", 0, 10000, step=10, key="ini_paypay", help="特定口座やポイント運用など、NISA以外の投資資産です。") * 10000
+        
         st.markdown("---")
         st.subheader("📈 運用利回り (%)")
-        r_cash = st.number_input("貯蓄金利", 0.0, 10.0, step=0.01, format="%.2f", key="r_cash") / 100
-        r_401k = st.number_input("401k年利", 0.0, 30.0, step=0.1, format="%.2f", key="r_401k") / 100
-        r_nisa = st.number_input("新NISA年利", 0.0, 30.0, step=0.1, format="%.2f", key="r_nisa") / 100
-        r_paypay = st.number_input("他運用年利", 0.0, 50.0, step=0.1, format="%.2f", key="r_paypay") / 100
-        inflation = st.number_input("インフレ率", -5.0, 20.0, step=0.1, format="%.2f", key="inflation") / 100
+        r_cash = st.number_input("貯蓄金利", 0.0, 10.0, step=0.01, format="%.2f", key="r_cash", help="銀行預金の想定金利です。") / 100
+        r_401k = st.number_input("401k年利", 0.0, 30.0, step=0.1, format="%.2f", key="r_401k", help="401k/iDeCoの想定リターンです。") / 100
+        r_nisa = st.number_input("新NISA年利", 0.0, 30.0, step=0.1, format="%.2f", key="r_nisa", help="新NISAの想定リターンです。（例: 全世界株式なら5〜7%程度）") / 100
+        r_paypay = st.number_input("他運用年利", 0.0, 50.0, step=0.1, format="%.2f", key="r_paypay", help="その他の投資資産の想定リターンです。") / 100
+        inflation = st.number_input("インフレ率", -5.0, 20.0, step=0.1, format="%.2f", key="inflation", help="毎年の生活費の上昇率です。2%に設定すると、生活費が毎年2%ずつ高くなります。") / 100
 
     with tab2:
         st.subheader("🏢 働き方と収入")
-        age_work_last = st.number_input("何歳まで働く？", 50, 90, key="age_work_last")
+        age_work_last = st.number_input("何歳まで働く？", 50, 90, key="age_work_last", help="給与収入が得られる最後の年齢です。この翌年から年金生活となります（年金開始前なら無収入期間）。")
+        
         st.markdown("##### 手取り年収 (万円)")
-        inc_20s = st.number_input("〜29歳", 0, 5000, step=10, key="inc_20s") * 10000
-        inc_30s = st.number_input("30〜39歳", 0, 5000, step=10, key="inc_30s") * 10000
-        inc_40s = st.number_input("40〜49歳", 0, 5000, step=10, key="inc_40s") * 10000
-        inc_50s = st.number_input("50〜59歳", 0, 5000, step=10, key="inc_50s") * 10000
-        inc_60s = st.number_input("60歳〜", 0, 5000, step=10, key="inc_60s") * 10000
+        inc_help = "ボーナスを含めた、年間の手取り収入の合計を入力してください。"
+        inc_20s = st.number_input("〜29歳", 0, 5000, step=10, key="inc_20s", help=inc_help) * 10000
+        inc_30s = st.number_input("30〜39歳", 0, 5000, step=10, key="inc_30s", help=inc_help) * 10000
+        inc_40s = st.number_input("40〜49歳", 0, 5000, step=10, key="inc_40s", help=inc_help) * 10000
+        inc_50s = st.number_input("50〜59歳", 0, 5000, step=10, key="inc_50s", help=inc_help) * 10000
+        inc_60s = st.number_input("60歳〜", 0, 5000, step=10, key="inc_60s", help=inc_help) * 10000
+        
         st.markdown("---")
         st.subheader("🐢 年金・退職金")
-        age_401k_get = st.number_input("401k受取年齢", 50, 80, key="age_401k_get")
-        tax_401k = st.number_input("401k受取税率(%)", 0.0, 50.0, step=0.1, format="%.1f", key="tax_401k") / 100
-        age_pension = st.number_input("年金開始年齢", 60, 75, key="age_pension")
-        pension_monthly = st.number_input("年金月額(額面・円)", 0, 500000, step=10000, key="pension_monthly")
-        tax_pension = st.number_input("年金税・社会保険料率(%)", 0.0, 50.0, step=0.1, format="%.1f", key="tax_pension") / 100
+        age_401k_get = st.number_input("401k受取年齢", 50, 80, key="age_401k_get", help="積み立てたiDeCo/401kを一括で受け取る年齢です。")
+        tax_401k = st.number_input("401k受取税率(%)", 0.0, 50.0, step=0.1, format="%.1f", key="tax_401k", help="退職金受け取り時の税金です。退職所得控除を考慮して概算（10-20%程度）を入力します。") / 100
+        age_pension = st.number_input("年金開始年齢", 60, 75, key="age_pension", help="公的年金を受給開始する年齢です。")
+        pension_monthly = st.number_input("年金月額(額面・円)", 0, 500000, step=10000, key="pension_monthly", help="ねんきん定期便などに記載されている、将来の受給予定月額（額面）です。")
+        tax_pension = st.number_input("年金税・社会保険料率(%)", 0.0, 50.0, step=0.1, format="%.1f", key="tax_pension", help="年金から天引きされる税金や保険料の割合です。（目安: 10〜15%程度）") / 100
+        
         st.markdown("---")
         st.subheader("🛒 支出設定")
         st.markdown("##### 基本生活費 (月/万円)")
-        cost_20s = st.number_input("〜29歳 生活費", 0, 500, step=1, key="cost_20s") * 10000
-        cost_30s = st.number_input("30代 生活費", 0, 500, step=1, key="cost_30s") * 10000
-        cost_40s = st.number_input("40代 生活費", 0, 500, step=1, key="cost_40s") * 10000
-        cost_50s = st.number_input("50代 生活費", 0, 500, step=1, key="cost_50s") * 10000
-        cost_60s = st.number_input("60歳〜 生活費", 0, 500, step=1, key="cost_60s") * 10000
+        cost_help = "家賃、食費、光熱費など、毎月必ず出ていくお金です。"
+        cost_20s = st.number_input("〜29歳 生活費", 0, 500, step=1, key="cost_20s", help=cost_help) * 10000
+        cost_30s = st.number_input("30代 生活費", 0, 500, step=1, key="cost_30s", help=cost_help) * 10000
+        cost_40s = st.number_input("40代 生活費", 0, 500, step=1, key="cost_40s", help=cost_help) * 10000
+        cost_50s = st.number_input("50代 生活費", 0, 500, step=1, key="cost_50s", help=cost_help) * 10000
+        cost_60s = st.number_input("60歳〜 生活費", 0, 500, step=1, key="cost_60s", help=cost_help) * 10000
+        
         st.markdown("##### 年間特別支出 (万円/年)")
-        exp_20s = st.number_input("〜29歳 特別出費", 0, 5000, step=10, key="exp_20s") * 10000
-        exp_30s = st.number_input("30代 特別出費", 0, 5000, step=10, key="exp_30s") * 10000
-        exp_40s = st.number_input("40代 特別出費", 0, 5000, step=10, key="exp_40s") * 10000
-        exp_50s = st.number_input("50代 特別出費", 0, 5000, step=10, key="exp_50s") * 10000
-        exp_60s = st.number_input("60歳〜 特別出費", 0, 5000, step=10, key="exp_60s") * 10000
+        exp_help = "旅行、帰省、家電買替、車検など、年単位で発生する特別なお金です。"
+        exp_20s = st.number_input("〜29歳 特別出費", 0, 5000, step=10, key="exp_20s", help=exp_help) * 10000
+        exp_30s = st.number_input("30代 特別出費", 0, 5000, step=10, key="exp_30s", help=exp_help) * 10000
+        exp_40s = st.number_input("40代 特別出費", 0, 5000, step=10, key="exp_40s", help=exp_help) * 10000
+        exp_50s = st.number_input("50代 特別出費", 0, 5000, step=10, key="exp_50s", help=exp_help) * 10000
+        exp_60s = st.number_input("60歳〜 特別出費", 0, 5000, step=10, key="exp_60s", help=exp_help) * 10000
 
     with tab3:
         st.subheader("🌱 積立投資の設定")
         col_t1, col_t2 = st.columns(2)
         with col_t1:
             st.markdown("**1. NISA つみたて投資枠**")
-            nisa_monthly = st.number_input("月額積立(円)", 0, 500000, step=1000, key="nisa_monthly", help="ここは年間120万円が上限として計算されます")
+            nisa_monthly = st.number_input("月額積立(円)", 0, 500000, step=1000, key="nisa_monthly", help="つみたて投資枠での毎月の積立額です。年間120万円が上限です。")
             nisa_year_val = nisa_monthly * 12
             if nisa_year_val <= 1200000:
                 st.info(f"✅ 年間 {nisa_year_val/10000:.0f}万 / 120万")
             else:
                 st.warning(f"⚠️ 年間120万を超えています。")
-            nisa_stop_age = st.number_input("NISA積立終了年齢", 20, 100, key="nisa_stop_age")
+            nisa_stop_age = st.number_input("NISA積立終了年齢", 20, 100, key="nisa_stop_age", help="何歳まで積立を続けるか設定します。退職と同時に止める場合は退職年齢を入力します。")
         with col_t2:
             st.markdown("**2. 他運用 (特定口座など)**")
-            paypay_monthly = st.number_input("他運用積立(月/円)", 0, 1000000, step=1000, key="paypay_monthly")
+            paypay_monthly = st.number_input("他運用積立(月/円)", 0, 1000000, step=1000, key="paypay_monthly", help="NISA枠外で行う毎月の積立額です。")
             st.write(f"(年間 {paypay_monthly*12/10000:.0f}万円)")
-            paypay_stop_age = st.number_input("他運用積立終了年齢", 20, 100, key="paypay_stop_age")
+            paypay_stop_age = st.number_input("他運用積立終了年齢", 20, 100, key="paypay_stop_age", help="この年齢になるまで積立を行います。")
             
         st.markdown("---")
         st.write("※401kは「働く期間」かつ「受取年齢の前」まで積立を行います。")
-        k401_monthly = st.number_input("401k積立(月/円)", 0, 500000, step=1000, key="k401_monthly")
+        k401_monthly = st.number_input("401k積立(月/円)", 0, 500000, step=1000, key="k401_monthly", help="給与天引きされる確定拠出年金の自己負担分（マッチング拠出など）や、iDeCoの掛金です。")
         
         st.markdown("---")
         st.subheader("💧 最低貯蓄額 (ダム水位)")
         st.caption("最低貯蓄額を超えた余剰金は、**「NISA 成長投資枠 (最大年240万)」** を埋めるために自動投資されます。")
-        dam_1 = st.number_input("〜49歳 最低貯蓄(万)", 0, 10000, step=50, key="dam_1") * 10000
-        dam_2 = st.number_input("50代 最低貯蓄(万)", 0, 10000, step=50, key="dam_2") * 10000
-        dam_3 = st.number_input("60歳〜 最低貯蓄(万)", 0, 10000, step=50, key="dam_3") * 10000
+        dam_help = "生活防衛資金として、投資に回さずに現金で持っておきたい最低金額です。"
+        dam_1 = st.number_input("〜49歳 最低貯蓄(万)", 0, 10000, step=50, key="dam_1", help=dam_help) * 10000
+        dam_2 = st.number_input("50代 最低貯蓄(万)", 0, 10000, step=50, key="dam_2", help=dam_help) * 10000
+        dam_3 = st.number_input("60歳〜 最低貯蓄(万)", 0, 10000, step=50, key="dam_3", help=dam_help) * 10000
 
     with tab4:
         st.subheader("🍂 取り崩し・補填ルール")
-        priority = st.radio("取り崩し優先順位 (不足時)", ["新NISAから先に使う", "他運用から先に使う"], horizontal=True, key="priority")
+        priority = st.radio("取り崩し優先順位 (不足時)", ["新NISAから先に使う", "他運用から先に使う"], horizontal=True, key="priority", help="現金が足りなくなった時、どちらの資産を優先して売却するかを選びます。")
         
         col_out1, col_out2 = st.columns(2)
         with col_out1:
-            nisa_start_age = st.number_input("新NISA 解禁年齢", 50, 100, key="nisa_start_age")
+            nisa_start_age = st.number_input("新NISA 解禁年齢", 50, 100, key="nisa_start_age", help="この年齢になるまでは、現金が不足してもNISAには手を付けません。")
         with col_out2:
-            paypay_start_age = st.number_input("他運用 解禁年齢", 50, 100, key="paypay_start_age")
+            paypay_start_age = st.number_input("他運用 解禁年齢", 50, 100, key="paypay_start_age", help="この年齢になるまでは、現金が不足しても他運用資産には手を付けません。")
         
         st.markdown("---")
         st.write("▼ 取り崩し上限設定")
@@ -200,20 +211,19 @@ def main():
         c_n_mode, c_n_val = st.columns([3, 2])
         limit_mode_options = ["年額定額 (万円)", "総資産比率 (%)", "残高比率 (%)"]
         
-        limit_mode_nisa = c_n_mode.selectbox("NISA上限方式", limit_mode_options, key="limit_mode_nisa", label_visibility="collapsed")
+        limit_mode_nisa = c_n_mode.selectbox("NISA上限方式", limit_mode_options, key="limit_mode_nisa", label_visibility="collapsed", help="取り崩す金額の上限ルールを決めます。定額で崩すか、資産の数％ずつ崩すか選べます。")
         
-        # ★ここ修正: formatを指定して表示を切り替え
         if limit_mode_nisa == "年額定額 (万円)":
             limit_val_nisa = c_n_val.number_input(
                 "NISA金額", 0, 10000, step=10, 
-                key="limit_val_nisa_yen", label_visibility="collapsed", format="%d", help="年間何万円まで (0=無制限)"
+                key="limit_val_nisa_yen", label_visibility="collapsed", format="%d", help="年間何万円まで取り崩すか指定します (0=無制限)"
             )
             st.caption(f"年間 **{limit_val_nisa}万円** まで")
             nisa_limit_yen_calc = limit_val_nisa * 10000
         else:
             limit_val_nisa = c_n_val.number_input(
                 "NISA割合", 0.0, 100.0, step=0.1, 
-                key="limit_val_nisa_pct", label_visibility="collapsed", format="%.1f", help="資産の何％まで"
+                key="limit_val_nisa_pct", label_visibility="collapsed", format="%.1f", help="資産の何％まで取り崩すか指定します（例: 4%ルールなら4.0）"
             )
             if limit_mode_nisa == "総資産比率 (%)":
                 st.caption(f"その年の **総資産の {limit_val_nisa:.1f}%** まで")
@@ -224,20 +234,19 @@ def main():
         # --- 他運用上限設定 ---
         st.markdown("**他運用 の年間上限**")
         c_o_mode, c_o_val = st.columns([3, 2])
-        limit_mode_other = c_o_mode.selectbox("他運用上限方式", limit_mode_options, key="limit_mode_other", label_visibility="collapsed")
+        limit_mode_other = c_o_mode.selectbox("他運用上限方式", limit_mode_options, key="limit_mode_other", label_visibility="collapsed", help="他運用資産の取り崩しルールです。")
         
-        # ★ここ修正: formatを指定して表示を切り替え
         if limit_mode_other == "年額定額 (万円)":
             limit_val_other = c_o_val.number_input(
                 "他運用金額", 0, 10000, step=10, 
-                key="limit_val_other_yen", label_visibility="collapsed", format="%d", help="年間何万円まで (0=無制限)"
+                key="limit_val_other_yen", label_visibility="collapsed", format="%d", help="年間何万円まで取り崩すか指定します (0=無制限)"
             )
             st.caption(f"年間 **{limit_val_other}万円** まで")
             other_limit_yen_calc = limit_val_other * 10000
         else:
             limit_val_other = c_o_val.number_input(
                 "他運用割合", 0.0, 100.0, step=0.1, 
-                key="limit_val_other_pct", label_visibility="collapsed", format="%.1f", help="資産の何％まで"
+                key="limit_val_other_pct", label_visibility="collapsed", format="%.1f", help="資産の何％まで取り崩すか指定します"
             )
             if limit_mode_other == "総資産比率 (%)":
                 st.caption(f"その年の **総資産の {limit_val_other:.1f}%** まで")
@@ -248,19 +257,22 @@ def main():
     with tab5:
         st.subheader("💰 臨時収入 (3枠)")
         c_i1_a, c_i1_v = st.columns([1, 2])
-        inc1_age = st.number_input("収入① 年齢", 0, 100, key="inc1_a")
-        inc1_val = c_i1_v.number_input("収入① 金額(万)", 0, 10000, step=100, key="inc1_v") * 10000
+        inc_help = "退職金、遺産相続、満期保険金など、特定の年齢で一度だけ入る大きな収入です。"
+        inc1_age = st.number_input("収入① 年齢", 0, 100, key="inc1_a", help="収入が発生する年齢")
+        inc1_val = c_i1_v.number_input("収入① 金額(万)", 0, 10000, step=100, key="inc1_v", help=inc_help) * 10000
         c_i2_a, c_i2_v = st.columns([1, 2])
         inc2_age = st.number_input("収入② 年齢", 0, 100, key="inc2_a")
         inc2_val = c_i2_v.number_input("収入② 金額(万)", 0, 10000, step=100, key="inc2_v") * 10000
         c_i3_a, c_i3_v = st.columns([1, 2])
         inc3_age = st.number_input("収入③ 年齢", 0, 100, key="inc3_a")
         inc3_val = c_i3_v.number_input("収入③ 金額(万)", 0, 10000, step=100, key="inc3_v") * 10000
+        
         st.markdown("---")
         st.subheader("💸 臨時支出 (3枠)")
+        dec_help = "子供の学費入学金、住宅購入頭金、リフォーム費用など、特定の年齢で発生する大きな出費です。"
         c_d1_a, c_d1_v = st.columns([1, 2])
-        dec1_age = st.number_input("支出① 年齢", 0, 100, key="dec1_a")
-        dec1_val = c_d1_v.number_input("支出① 金額(万)", 0, 10000, step=100, key="dec1_v") * 10000
+        dec1_age = st.number_input("支出① 年齢", 0, 100, key="dec1_a", help="支出が発生する年齢")
+        dec1_val = c_d1_v.number_input("支出① 金額(万)", 0, 10000, step=100, key="dec1_v", help=dec_help) * 10000
         c_d2_a, c_d2_v = st.columns([1, 2])
         dec2_age = st.number_input("支出② 年齢", 0, 100, key="dec2_a")
         dec2_val = c_d2_v.number_input("支出② 金額(万)", 0, 10000, step=100, key="dec2_v") * 10000
@@ -461,6 +473,7 @@ def main():
     # --- 結果表示 ---
     df = pd.DataFrame(records)
 
+    # 1. グラフ
     if "graph_mode" not in st.session_state:
         st.session_state["graph_mode"] = "積み上げ (総資産)"
     current_mode = st.session_state["graph_mode"]
