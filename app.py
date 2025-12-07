@@ -30,8 +30,6 @@ DEFAULT_CONFIG = {
     "limit_mode_other": "年額定額 (万円)",
     "limit_val_other_yen": 20,
     "limit_val_other_pct": 4.0,
-    
-    # ★追加: 他運用の取崩し税率
     "tax_rate_other": 0.0,
 
     "inc1_a": 55, "inc1_v": 500, "inc2_a": 0, "inc2_v": 0, "inc3_a": 0, "inc3_v": 0,
@@ -82,8 +80,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 💰 簡易資産シミュレータ v2.7")
-    st.caption("Ver. Tax Consideration for Other Assets")
+    st.markdown("### 💰 簡易資産シミュレータ v2.8")
+    st.caption("Ver. Bonus Calculation Tab Added")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -93,18 +91,20 @@ def main():
         label="💾 設定をダウンロード (PCに保存)",
         data=get_download_json(),
         file_name="asset_simulator_config.json",
-        mime="application/json"
+        mime="application/json",
+        help="現在のすべての入力内容をJSONファイルとして保存します。"
     )
     uploaded_file = st.sidebar.file_uploader(
         "📤 設定ファイルをアップロード", type=["json"], accept_multiple_files=False,
-        help="ダウンロードしたJSONファイルを選択すると、設定が反映されます。"
+        help="保存したJSONファイルを読み込んで、設定を復元します。"
     )
     if uploaded_file is not None:
         load_uploaded_settings(uploaded_file)
     
     st.sidebar.markdown("---") 
     
-    tab1, tab2, tab3, tab4, tab5 = st.sidebar.tabs(["基本・初期", "収入・支出", "積立設定", "取崩し戦略", "臨時収支"])
+    # ★ タブを6つに拡張（一番右にオマケを追加）
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.sidebar.tabs(["基本・初期", "収入・支出", "積立設定", "取崩し戦略", "臨時収支", "🎁 オマケ"])
 
     # --- 入力 UI ---
     with tab1:
@@ -123,13 +123,13 @@ def main():
         st.subheader("📈 運用利回り (%)")
         r_cash = st.number_input("貯蓄金利", 0.0, 10.0, step=0.01, format="%.2f", key="r_cash", help="銀行預金の想定金利です。") / 100
         r_401k = st.number_input("401k年利", 0.0, 30.0, step=0.1, format="%.2f", key="r_401k", help="401k/iDeCoの想定リターンです。") / 100
-        r_nisa = st.number_input("新NISA年利", 0.0, 30.0, step=0.1, format="%.2f", key="r_nisa", help="新NISAの想定リターンです。（例: 全世界株式なら5〜7%程度）") / 100
+        r_nisa = st.number_input("新NISA年利", 0.0, 30.0, step=0.1, format="%.2f", key="r_nisa", help="新NISAの想定リターンです。") / 100
         r_paypay = st.number_input("他運用年利", 0.0, 50.0, step=0.1, format="%.2f", key="r_paypay", help="その他の投資資産の想定リターンです。") / 100
-        inflation = st.number_input("インフレ率", -5.0, 20.0, step=0.1, format="%.2f", key="inflation", help="毎年の生活費の上昇率です。2%に設定すると、生活費が毎年2%ずつ高くなります。") / 100
+        inflation = st.number_input("インフレ率", -5.0, 20.0, step=0.1, format="%.2f", key="inflation", help="毎年の生活費の上昇率です。") / 100
 
     with tab2:
         st.subheader("🏢 働き方と収入")
-        age_work_last = st.number_input("何歳まで働く？", 50, 90, key="age_work_last", help="給与収入が得られる最後の年齢です。この翌年から年金生活となります（年金開始前なら無収入期間）。")
+        age_work_last = st.number_input("何歳まで働く？", 50, 90, key="age_work_last", help="給与収入が得られる最後の年齢です。")
         
         st.markdown("##### 手取り年収 (万円)")
         inc_help = "ボーナスを含めた、年間の手取り収入の合計を入力してください。"
@@ -142,10 +142,10 @@ def main():
         st.markdown("---")
         st.subheader("🐢 年金・退職金")
         age_401k_get = st.number_input("401k受取年齢", 50, 80, key="age_401k_get", help="積み立てたiDeCo/401kを一括で受け取る年齢です。")
-        tax_401k = st.number_input("401k受取税率(%)", 0.0, 50.0, step=0.1, format="%.1f", key="tax_401k", help="退職金受け取り時の税金です。退職所得控除を考慮して概算（10-20%程度）を入力します。") / 100
+        tax_401k = st.number_input("401k受取税率(%)", 0.0, 50.0, step=0.1, format="%.1f", key="tax_401k", help="退職金受け取り時の税金です。") / 100
         age_pension = st.number_input("年金開始年齢", 60, 75, key="age_pension", help="公的年金を受給開始する年齢です。")
-        pension_monthly = st.number_input("年金月額(額面・円)", 0, 500000, step=10000, key="pension_monthly", help="ねんきん定期便などに記載されている、将来の受給予定月額（額面）です。")
-        tax_pension = st.number_input("年金税・社会保険料率(%)", 0.0, 50.0, step=0.1, format="%.1f", key="tax_pension", help="年金から天引きされる税金や保険料の割合です。（目安: 10〜15%程度）") / 100
+        pension_monthly = st.number_input("年金月額(額面・円)", 0, 500000, step=10000, key="pension_monthly", help="将来の受給予定月額（額面）です。")
+        tax_pension = st.number_input("年金税・社会保険料率(%)", 0.0, 50.0, step=0.1, format="%.1f", key="tax_pension", help="年金から天引きされる税金や保険料の割合です。") / 100
         
         st.markdown("---")
         st.subheader("🛒 支出設定")
@@ -170,13 +170,13 @@ def main():
         col_t1, col_t2 = st.columns(2)
         with col_t1:
             st.markdown("**1. NISA つみたて投資枠**")
-            nisa_monthly = st.number_input("月額積立(円)", 0, 500000, step=1000, key="nisa_monthly", help="つみたて投資枠での毎月の積立額です。年間120万円が上限です。")
+            nisa_monthly = st.number_input("月額積立(円)", 0, 500000, step=1000, key="nisa_monthly", help="つみたて投資枠での毎月の積立額です。")
             nisa_year_val = nisa_monthly * 12
             if nisa_year_val <= 1200000:
                 st.info(f"✅ 年間 {nisa_year_val/10000:.0f}万 / 120万")
             else:
                 st.warning(f"⚠️ 年間120万を超えています。")
-            nisa_stop_age = st.number_input("NISA積立終了年齢", 20, 100, key="nisa_stop_age", help="何歳まで積立を続けるか設定します。退職と同時に止める場合は退職年齢を入力します。")
+            nisa_stop_age = st.number_input("NISA積立終了年齢", 20, 100, key="nisa_stop_age", help="何歳まで積立を続けるか設定します。")
         with col_t2:
             st.markdown("**2. 他運用 (特定口座など)**")
             paypay_monthly = st.number_input("他運用積立(月/円)", 0, 1000000, step=1000, key="paypay_monthly", help="NISA枠外で行う毎月の積立額です。")
@@ -185,7 +185,7 @@ def main():
             
         st.markdown("---")
         st.write("※401kは「働く期間」かつ「受取年齢の前」まで積立を行います。")
-        k401_monthly = st.number_input("401k積立(月/円)", 0, 500000, step=1000, key="k401_monthly", help="給与天引きされる確定拠出年金の自己負担分（マッチング拠出など）や、iDeCoの掛金です。")
+        k401_monthly = st.number_input("401k積立(月/円)", 0, 500000, step=1000, key="k401_monthly", help="給与天引きされる確定拠出年金の自己負担分です。")
         
         st.markdown("---")
         st.subheader("💧 最低貯蓄額 (ダム水位)")
@@ -213,7 +213,7 @@ def main():
         c_n_mode, c_n_val = st.columns([3, 2])
         limit_mode_options = ["年額定額 (万円)", "総資産比率 (%)", "残高比率 (%)"]
         
-        limit_mode_nisa = c_n_mode.selectbox("NISA上限方式", limit_mode_options, key="limit_mode_nisa", label_visibility="collapsed", help="取り崩す金額の上限ルールを決めます。定額で崩すか、資産の数％ずつ崩すか選べます。")
+        limit_mode_nisa = c_n_mode.selectbox("NISA上限方式", limit_mode_options, key="limit_mode_nisa", label_visibility="collapsed", help="取り崩す金額の上限ルールを決めます。")
         
         if limit_mode_nisa == "年額定額 (万円)":
             limit_val_nisa = c_n_val.number_input(
@@ -225,7 +225,7 @@ def main():
         else:
             limit_val_nisa = c_n_val.number_input(
                 "NISA割合", 0.0, 100.0, step=0.1, 
-                key="limit_val_nisa_pct", label_visibility="collapsed", format="%.1f", help="資産の何％まで取り崩すか指定します（例: 4%ルールなら4.0）"
+                key="limit_val_nisa_pct", label_visibility="collapsed", format="%.1f", help="資産の何％まで取り崩すか指定します"
             )
             if limit_mode_nisa == "総資産比率 (%)":
                 st.caption(f"その年の **総資産の {limit_val_nisa:.1f}%** まで")
@@ -256,10 +256,9 @@ def main():
                 st.caption(f"その年の **他運用残高の {limit_val_other:.1f}%** まで")
             other_limit_yen_calc = limit_val_other
         
-        # ★ 追加: 他運用税率設定
         st.markdown("**他運用 取崩し税率 (%)**")
         tax_rate_other = st.number_input("他運用 取崩し税率", 0.0, 50.0, step=0.1, format="%.1f", key="tax_rate_other", 
-            help="ポイント運用などをそのままポイントとして使う場合は非課税（0%）ですが、現金化して引き出す場合は課税対象となる可能性があります（例: 利益に対して約20%）。ここでは簡易的に「取り崩し額全体」に対する税率を設定します。") / 100
+            help="現金化して引き出す場合の税金です。利益に対して約20%が目安です。簡易的に「取崩し額全体」に対して計算します。") / 100
 
     with tab5:
         st.subheader("💰 臨時収入 (3枠)")
@@ -286,6 +285,28 @@ def main():
         c_d3_a, c_d3_v = st.columns([1, 2])
         dec3_age = st.number_input("支出③ 年齢", 0, 100, key="dec3_a")
         dec3_val = c_d3_v.number_input("支出③ 金額(万)", 0, 10000, step=100, key="dec3_v") * 10000
+
+    # ★ 追加: オマケタブ
+    with tab6:
+        st.subheader("🧮 必要資産額シミュレータ")
+        st.caption("「毎年これくらい使いたいなら、元本はいくら必要？」を計算します。")
+        
+        st.markdown("#### ステップ1: 目標の設定")
+        target_yearly_income = st.number_input("希望する年間取崩し額 (万円)", 0, 5000, 240, step=10, format="%d", help="配当金や売却益で、毎年受け取りたい金額（手取り）を入力します。")
+        target_interest_rate = st.number_input("想定利回り (年利 %)", 0.1, 20.0, 4.0, step=0.1, format="%.1f", help="資産運用で期待する年間利回りです。")
+
+        st.markdown("---")
+        st.markdown("#### ステップ2: 計算結果")
+        
+        if target_interest_rate > 0:
+            # 必要資産 = 年間取崩額 / 利回り
+            required_asset = (target_yearly_income * 10000) / (target_interest_rate / 100)
+            
+            st.metric("必要な総資産額", f"{required_asset/10000:,.0f} 万円")
+            st.info(f"💡 **{required_asset/10000:,.0f}万円** を年利 **{target_interest_rate}%** で運用すれば、元本を減らさずに毎年 **{target_yearly_income}万円** を受け取り続けられます。")
+            st.caption("※税金やインフレは考慮していません。簡易的な目安としてお使いください。")
+        else:
+            st.warning("利回りを0より大きく設定してください。")
 
     # --- 計算ロジック ---
     records = []
@@ -417,15 +438,9 @@ def main():
             limit_other_yen = calc_actual_limit(limit_mode_other, other_limit_yen_calc, paypay, current_total_investments)
 
             # 引出し処理 (税率対応)
-            # tax_rateが 0.2 (20%) なら、1万円の現金を得るために 1 / (1-0.2) = 1.25万円 取り崩す必要がある
             def withdraw_asset_logic(needed, current_val, principal_val, is_nisa, limit_yen, tax_rate=0.0):
-                # 必要な「手取り額」を得るための「取り崩し額（税引前）」を計算
                 gross_needed = needed / (1 - tax_rate) if (1 - tax_rate) > 0 else needed
-                
-                # 取り崩せる額は、残高、上限額、必要額（税引前）の最小値
                 can_withdraw_gross = min(gross_needed, current_val, limit_yen)
-                
-                # 実際に手に入る現金（税引後）
                 net_cash_obtained = can_withdraw_gross * (1 - tax_rate)
                 
                 new_val = current_val - can_withdraw_gross
@@ -435,18 +450,15 @@ def main():
                     ratio = can_withdraw_gross / current_val
                     new_principal = principal_val * (1 - ratio)
                 
-                # 返すのは「手に入れた現金」
                 return net_cash_obtained, new_val, new_principal
 
             # 優先順位分岐
             if priority == "新NISAから先に使う":
                 if age >= nisa_start_age:
-                    # NISAは非課税 (tax_rate=0)
                     pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True, limit_nisa_yen, 0.0)
                     shortage -= pay_nisa
                 
                 if age >= paypay_start_age:
-                    # 他運用は課税あり
                     pay_other, paypay, _ = withdraw_asset_logic(shortage, paypay, 0, False, limit_other_yen, tax_rate_other)
                     shortage -= pay_other
             else:
@@ -491,7 +503,6 @@ def main():
     # --- 結果表示 ---
     df = pd.DataFrame(records)
 
-    # 1. グラフ
     if "graph_mode" not in st.session_state:
         st.session_state["graph_mode"] = "積み上げ (総資産)"
     current_mode = st.session_state["graph_mode"]
