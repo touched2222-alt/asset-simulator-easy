@@ -58,7 +58,7 @@ def get_download_json():
     return json.dumps(save_data, indent=4, ensure_ascii=False)
 
 # --- メインアプリ ---
-st.set_page_config(page_title="簡易資産シミュレータ v4.2", page_icon="💰", layout="wide")
+st.set_page_config(page_title="簡易資産シミュレータ v5.0", page_icon="🌷", layout="wide")
 
 def main():
     if "first_load_done" not in st.session_state:
@@ -67,96 +67,132 @@ def main():
                 st.session_state[key] = value
         st.session_state["first_load_done"] = True
     
-    # ★デザインカスタマイズ (Clean EC Style)
+    # ★デザインカスタマイズ (Soft Elegant Theme)
     st.markdown("""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500&display=swap');
         
         /* 全体のフォントと背景 */
         html, body, [class*="css"] {
             font-family: 'Noto Sans JP', sans-serif;
-            color: #111827; /* 濃い黒に近いグレー */
-            background-color: #ffffff;
+            color: #5d5555; /* 柔らかいチャコールグレー */
         }
         
-        /* サイドバー */
-        [data-testid="stSidebar"] {
-            background-color: #f3f4f6; /* 薄いグレー */
-            border-right: 1px solid #e5e7eb;
+        /* 背景色: ほんのりサクラ色 + ドット柄 */
+        .stApp {
+            background-color: #fffbfb;
+            background-image: radial-gradient(#fce7f3 1px, transparent 1px);
+            background-size: 20px 20px;
         }
 
-        /* 見出し */
+        /* サイドバー */
+        [data-testid="stSidebar"] {
+            background-color: #fff0f5; /* Lavender Blush */
+            border-right: 1px solid #fbcfe8;
+        }
+        [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+            color: #9d5b75 !important;
+        }
+
+        /* 見出し: 明朝体でエレガントに */
         h1, h2, h3 {
-            color: #111827;
+            font-family: 'Shippori Mincho', serif;
+            color: #831843 !important; /* 上品なローズレッド */
             font-weight: 700 !important;
         }
+        h4, h5, h6 {
+            color: #704855 !important;
+            font-weight: 600 !important;
+        }
         
-        /* カードデザイン（Metrics） */
+        /* カードデザイン（Metrics）: 丸みと柔らかい影 */
         [data-testid="stMetric"] {
             background-color: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px; /* 角丸は少しだけ */
+            border: 1px solid #fce7f3;
+            border-radius: 20px; /* 大きく丸く */
             padding: 16px;
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* ほんのり影 */
+            box-shadow: 0 4px 15px rgba(244, 114, 182, 0.1); /* ピンク系の影 */
         }
         [data-testid="stMetricLabel"] {
-            font-size: 0.85rem !important;
-            color: #6b7280 !important;
+            font-size: 0.9rem !important;
+            color: #9d8189 !important; /* くすみピンクグレー */
             font-weight: 500;
         }
         [data-testid="stMetricValue"] {
             font-size: 1.8rem !important;
-            color: #111827 !important; /* 金額は黒くはっきり */
+            color: #831843 !important;
+            font-family: 'Shippori Mincho', serif; /* 数字も明朝体で美しく */
             font-weight: 700;
-            font-family: 'Arial', sans-serif; /* 数字はArialでパキッと */
         }
         [data-testid="stMetricDelta"] {
-            color: #ea580c !important; /* オレンジ色でアクセント */
+            color: #10b981 !important; /* 落ち着いたグリーン */
         }
 
         /* タブデザイン */
         .stTabs [data-baseweb="tab-list"] {
-            border-bottom: 2px solid #e5e7eb;
-            gap: 20px;
+            border-bottom: 2px solid #fbcfe8;
+            gap: 15px;
         }
         .stTabs [data-baseweb="tab"] {
             background-color: transparent;
-            color: #6b7280;
-            font-weight: 600;
-            padding: 10px 0;
+            color: #9d8189;
+            font-weight: 500;
+            padding: 10px 10px;
             border: none;
+            font-family: 'Shippori Mincho', serif;
         }
         .stTabs [aria-selected="true"] {
-            color: #2563eb !important; /* 鮮やかなブルー */
-            border-bottom: 2px solid #2563eb;
+            color: #db2777 !important; /* ピンク */
+            border-bottom: 3px solid #db2777;
+            font-weight: 700;
         }
 
         /* カスタムカード（オマケタブ用） */
         .custom-card {
             background-color: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
+            border: 1px solid #fce7f3;
+            border-radius: 24px;
             padding: 24px;
             text-align: center;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 6px 20px rgba(244, 114, 182, 0.15);
         }
 
-        /* ボタン */
+        /* ボタン: グラデーション */
         .stButton button {
+            background: linear-gradient(to right, #f472b6, #db2777);
+            color: white !important;
+            border: none;
+            border-radius: 20px;
             font-weight: 600;
-            border-radius: 6px;
+            transition: all 0.3s;
+        }
+        .stButton button:hover {
+            box-shadow: 0 4px 12px rgba(219, 39, 119, 0.4);
+            transform: translateY(-1px);
+        }
+        
+        /* ダウンロードボタン等の文字色調整 */
+        [data-testid="stDownloadButton"] button {
+             color: white !important;
+        }
+
+        /* 入力フォーム */
+        .stNumberInput input, .stSelectbox div[data-baseweb="select"] {
+            border-radius: 12px;
+            border: 1px solid #f9a8d4 !important; /* 薄いピンクの枠線 */
+            background-color: #fffbff;
         }
 
         /* 区切り線 */
         hr {
             margin: 2em 0;
-            border-color: #e5e7eb;
+            border-color: #fbcfe8;
         }
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("💰 簡易資産シミュレータ v4.2")
-    st.caption("Ver. Simple Modern EC Style")
+    st.title("🌷 簡易資産シミュレータ v5.0")
+    st.caption("Soft & Elegant Design Edition")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -180,8 +216,9 @@ def main():
     
     st.sidebar.markdown("---") 
     
+    # アイコンも柔らかいものに変更
     tab1, tab2, tab3, tab4, tab5, tab6 = st.sidebar.tabs([
-        "👤 基本", "🏢 収支", "🌱 積立", "🍂 取崩", "💸 臨時", "🎁 オマケ"
+        "👤 基本", "🏠 収支", "🌱 積立", "🍂 取崩", "🎀 臨時", "✨ オマケ"
     ])
 
     # --- 入力 UI ---
@@ -206,7 +243,7 @@ def main():
         inflation = st.number_input("インフレ率", -5.0, 20.0, step=0.1, format="%.2f", key="inflation", help="毎年の生活費の上昇率です。") / 100
 
     with tab2:
-        st.subheader("🏢 働き方と収入")
+        st.subheader("🏠 働き方と収入")
         age_work_last = st.number_input("何歳まで働く？", 50, 90, key="age_work_last", help="給与収入が得られる最後の年齢です。")
         
         st.markdown("##### 手取り年収 (万円)")
@@ -339,14 +376,16 @@ def main():
             help="現金化して引き出す場合の税金です。利益に対して約20%が目安です。") / 100
 
     with tab5:
-        st.subheader("💰 臨時収入 (3枠)")
+        st.subheader("🎀 臨時収入 (3枠)")
         c_i1_a, c_i1_v = st.columns([1, 2])
         inc_help = "退職金、遺産相続、満期保険金など、特定の年齢で一度だけ入る大きな収入です。"
         inc1_age = c_i1_a.number_input("収入① 年齢", 0, 100, key="inc1_a", help="収入が発生する年齢")
         inc1_val = c_i1_v.number_input("収入① 金額(万)", 0, 10000, step=100, key="inc1_v", help=inc_help) * 10000
+        
         c_i2_a, c_i2_v = st.columns([1, 2])
         inc2_age = c_i2_a.number_input("収入② 年齢", 0, 100, key="inc2_a")
         inc2_val = c_i2_v.number_input("収入② 金額(万)", 0, 10000, step=100, key="inc2_v") * 10000
+        
         c_i3_a, c_i3_v = st.columns([1, 2])
         inc3_age = c_i3_a.number_input("収入③ 年齢", 0, 100, key="inc3_a")
         inc3_val = c_i3_v.number_input("収入③ 金額(万)", 0, 10000, step=100, key="inc3_v") * 10000
@@ -357,16 +396,18 @@ def main():
         c_d1_a, c_d1_v = st.columns([1, 2])
         dec1_age = c_d1_a.number_input("支出① 年齢", 0, 100, key="dec1_a", help="支出が発生する年齢")
         dec1_val = c_d1_v.number_input("支出① 金額(万)", 0, 10000, step=100, key="dec1_v", help=dec_help) * 10000
+        
         c_d2_a, c_d2_v = st.columns([1, 2])
         dec2_age = c_d2_a.number_input("支出② 年齢", 0, 100, key="dec2_a")
         dec2_val = c_d2_v.number_input("支出② 金額(万)", 0, 10000, step=100, key="dec2_v") * 10000
+        
         c_d3_a, c_d3_v = st.columns([1, 2])
         dec3_age = c_d3_a.number_input("支出③ 年齢", 0, 100, key="dec3_a")
         dec3_val = c_d3_v.number_input("支出③ 金額(万)", 0, 10000, step=100, key="dec3_v") * 10000
 
     # ★ オマケタブ (解説付き・デザイン調整)
     with tab6:
-        st.subheader("🧮 必要資産額シミュレータ")
+        st.subheader("✨ 必要資産額シミュレータ")
         
         st.markdown("#### ステップ1: 目標の設定")
         target_yearly_income = st.number_input("希望する年間取崩し額 (万円)", 0, 5000, 240, step=10, format="%d", help="配当金や売却益で、毎年受け取りたい金額（手取り）を入力します。")
@@ -378,14 +419,14 @@ def main():
         if target_interest_rate > 0:
             required_asset = (target_yearly_income * 10000) / (target_interest_rate / 100)
             
-            # ★デザイン変更: ECサイトの価格表示風カード
+            # ★デザイン変更: 女性向けソフトデザインカード
             st.markdown(f"""
                 <div class="custom-card">
-                    <h4 style="color: #4b5563; margin-bottom: 5px;">必要な総資産額</h4>
-                    <p style="font-size: 2.8rem; font-weight: 800; color: #111827; margin: 0; font-family: 'Arial', sans-serif;">
-                        {required_asset/10000:,.0f}<span style="font-size: 1.2rem; color: #6b7280; font-weight: 600;"> 万円</span>
+                    <h4 style="color: #9d5b75; margin-bottom: 5px; font-family: 'Shippori Mincho', serif;">必要な総資産額</h4>
+                    <p style="font-size: 2.8rem; font-weight: 700; color: #831843; margin: 0; font-family: 'Shippori Mincho', serif; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);">
+                        {required_asset/10000:,.0f}<span style="font-size: 1.2rem; color: #9d8189;"> 万円</span>
                     </p>
-                    <p style="color: #6b7280; margin-top: 5px; font-size: 0.9rem;">
+                    <p style="color: #704855; margin-top: 5px; font-size: 0.9rem;">
                         (年利 {target_interest_rate}% で運用した場合)
                     </p>
                 </div>
@@ -403,7 +444,7 @@ def main():
     # --- カウンター表示 ---
     st.sidebar.markdown("---")
     st.sidebar.caption("👀 訪問者数")
-    st.sidebar.markdown(f"![Visitor Count](https://visitor-badge.laobi.icu/badge?page_id=touched2222_asset_simulator_v4)")
+    st.sidebar.markdown(f"![Visitor Count](https://visitor-badge.laobi.icu/badge?page_id=touched2222_asset_simulator_v5)")
 
     # --- 計算ロジック ---
     records = []
@@ -588,27 +629,27 @@ def main():
             "401k": int(k401),
             "NISA": int(nisa),
             "Other": int(paypay),
-            "NISA積立枠": 0,
-            "NISA成長枠": 0,
+            "NISA積立枠": int(nisa_tsumitate_year),
+            "NISA成長枠": int(nisa_growth_year),
             "NISA元本": int(nisa_principal) 
         })
 
     # --- 結果表示 ---
     df = pd.DataFrame(records)
 
-    # 1. グラフ
+    # 1. グラフ (Soft Elegant Colors)
     if "graph_mode" not in st.session_state:
         st.session_state["graph_mode"] = "積み上げ (総資産)"
     current_mode = st.session_state["graph_mode"]
 
     df_melt = df.melt(id_vars=["Age"], value_vars=["Cash", "401k", "NISA", "Other"], var_name="Asset", value_name="Amount")
     
-    # 配色もモダンに
+    # 優しい色合いのパレット
     colors = {
-        "Cash": "#3b82f6",  # 明るい青
-        "NISA": "#f43f5e",  # ローズレッド
-        "401k": "#10b981",  # エメラルドグリーン
-        "Other": "#8b5cf6"  # バイオレット
+        "Cash": "#a5b4fc",  # Soft Indigo
+        "NISA": "#fca5a5",  # Soft Red/Pink
+        "401k": "#86efac",  # Soft Green
+        "Other": "#f0abfc"  # Soft Purple
     }
     
     if current_mode == "積み上げ (総資産)":
@@ -624,7 +665,7 @@ def main():
         hovermode="x unified",
         plot_bgcolor="white",
         paper_bgcolor="white",
-        font={"family": "Noto Sans JP", "color": "#111827"},
+        font={"family": "Noto Sans JP", "color": "#5d5555"},
         margin=dict(l=20, r=20, t=40, b=20),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
