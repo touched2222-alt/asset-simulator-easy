@@ -22,27 +22,25 @@ DEFAULT_CONFIG = {
     "priority": "新NISAから先に使う",
     "nisa_start_age": 65, "paypay_start_age": 60,
     
-    # ★変更: 上限設定を「金額用」と「％用」で別々に保存するように改良
+    # 上限設定
     "limit_mode_nisa": "年額定額 (万円)",
-    "limit_val_nisa_yen": 0.0,  # 金額用の値
-    "limit_val_nisa_pct": 4.0,  # ％用の値
+    "limit_val_nisa_yen": 0,    # 整数で管理
+    "limit_val_nisa_pct": 4.0,  # 小数で管理
     
     "limit_mode_other": "年額定額 (万円)",
-    "limit_val_other_yen": 20.0,
+    "limit_val_other_yen": 20,
     "limit_val_other_pct": 4.0,
 
     "inc1_a": 55, "inc1_v": 500, "inc2_a": 0, "inc2_v": 0, "inc3_a": 0, "inc3_v": 0,
     "dec1_a": 66, "dec1_v": 1000, "dec2_a": 0, "dec2_v": 0, "dec3_a": 0, "dec3_v": 0
 }
 
-# --- ヘルパー関数: 設定の読み込み・保存 ---
+# --- ヘルパー関数 ---
 
 def load_uploaded_settings(uploaded_file):
-    """アップロードされたJSONデータを処理し、st.session_stateに反映"""
     try:
         bytes_data = uploaded_file.getvalue()
         data = json.loads(bytes_data)
-        
         count = 0
         for key, value in data.items():
             if key in st.session_state:
@@ -53,26 +51,22 @@ def load_uploaded_settings(uploaded_file):
         st.sidebar.error(f"⚠️ ファイル形式エラー: {e}")
 
 def get_download_json():
-    """現在の設定をJSON文字列として取得"""
     save_data = {}
     for key in DEFAULT_CONFIG.keys():
         if key in st.session_state:
             save_data[key] = st.session_state[key]
-    
     return json.dumps(save_data, indent=4, ensure_ascii=False)
 
 # --- メインアプリ ---
 st.set_page_config(page_title="簡易資産シミュレータ", page_icon="💰", layout="wide")
 
 def main():
-    # 1. アプリ起動時の初期化
     if "first_load_done" not in st.session_state:
         for key, value in DEFAULT_CONFIG.items():
             if key not in st.session_state:
                 st.session_state[key] = value
         st.session_state["first_load_done"] = True
     
-    # 2. CSSスタイル設定
     st.markdown("""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
@@ -85,13 +79,12 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 💰 簡易資産シミュレータ v2.4")
-    st.caption("Ver. Improved Input UI (Separate Yen/% Fields)")
+    st.markdown("### 💰 簡易資産シミュレータ v2.5")
+    st.caption("Ver. Clean Integer/Float Inputs")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
     
-    # ダウンロード・アップロード機能
     st.sidebar.subheader("📁 設定ファイル")
     st.sidebar.download_button(
         label="💾 設定をダウンロード (PCに保存)",
@@ -99,14 +92,10 @@ def main():
         file_name="asset_simulator_config.json",
         mime="application/json"
     )
-
     uploaded_file = st.sidebar.file_uploader(
-        "📤 設定ファイルをアップロード", 
-        type=["json"], 
-        accept_multiple_files=False,
+        "📤 設定ファイルをアップロード", type=["json"], accept_multiple_files=False,
         help="ダウンロードしたJSONファイルを選択すると、設定が反映されます。"
     )
-
     if uploaded_file is not None:
         load_uploaded_settings(uploaded_file)
     
@@ -170,13 +159,11 @@ def main():
         with col_t1:
             st.markdown("**1. NISA つみたて投資枠**")
             nisa_monthly = st.number_input("月額積立(円)", 0, 500000, step=1000, key="nisa_monthly", help="ここは年間120万円が上限として計算されます")
-            
             nisa_year_val = nisa_monthly * 12
             if nisa_year_val <= 1200000:
                 st.info(f"✅ 年間 {nisa_year_val/10000:.0f}万 / 120万")
             else:
-                st.warning(f"⚠️ 年間120万を超えています。シミュレーション上は120万として計算します。")
-
+                st.warning(f"⚠️ 年間120万を超えています。")
             nisa_stop_age = st.number_input("NISA積立終了年齢", 20, 100, key="nisa_stop_age")
         with col_t2:
             st.markdown("**2. 他運用 (特定口座など)**")
@@ -208,43 +195,54 @@ def main():
         st.markdown("---")
         st.write("▼ 取り崩し上限設定")
         
-        # --- NISA上限設定 (UI改善版) ---
+        # --- NISA上限設定 ---
         st.markdown("**新NISA の年間上限**")
         c_n_mode, c_n_val = st.columns([3, 2])
         limit_mode_options = ["年額定額 (万円)", "総資産比率 (%)", "残高比率 (%)"]
         
-        # モード選択
         limit_mode_nisa = c_n_mode.selectbox("NISA上限方式", limit_mode_options, key="limit_mode_nisa", label_visibility="collapsed")
         
-        # モードに応じて入力欄を切り替え（別々のキーで保存）
+        # ★ここ修正: formatを指定して表示を切り替え
         if limit_mode_nisa == "年額定額 (万円)":
-            limit_val_nisa = c_n_val.number_input("NISA金額", 0.0, 10000.0, step=10.0, key="limit_val_nisa_yen", label_visibility="collapsed", help="年間何万円まで取り崩すか (0は無制限)")
-            st.caption(f"年間 **{limit_val_nisa:.0f}万円** まで取り崩します。")
+            limit_val_nisa = c_n_val.number_input(
+                "NISA金額", 0, 10000, step=10, 
+                key="limit_val_nisa_yen", label_visibility="collapsed", format="%d", help="年間何万円まで (0=無制限)"
+            )
+            st.caption(f"年間 **{limit_val_nisa}万円** まで")
             nisa_limit_yen_calc = limit_val_nisa * 10000
         else:
-            limit_val_nisa = c_n_val.number_input("NISA割合", 0.0, 100.0, step=0.1, key="limit_val_nisa_pct", label_visibility="collapsed", help="資産の何％まで取り崩すか")
+            limit_val_nisa = c_n_val.number_input(
+                "NISA割合", 0.0, 100.0, step=0.1, 
+                key="limit_val_nisa_pct", label_visibility="collapsed", format="%.1f", help="資産の何％まで"
+            )
             if limit_mode_nisa == "総資産比率 (%)":
-                st.caption(f"その年の **総資産の {limit_val_nisa:.1f}%** まで。")
+                st.caption(f"その年の **総資産の {limit_val_nisa:.1f}%** まで")
             else:
-                st.caption(f"その年の **NISA残高の {limit_val_nisa:.1f}%** まで。")
-            nisa_limit_yen_calc = limit_val_nisa # ％の値をそのまま渡す（計算ロジックで処理）
+                st.caption(f"その年の **NISA残高の {limit_val_nisa:.1f}%** まで")
+            nisa_limit_yen_calc = limit_val_nisa
 
-        # --- 他運用上限設定 (UI改善版) ---
+        # --- 他運用上限設定 ---
         st.markdown("**他運用 の年間上限**")
         c_o_mode, c_o_val = st.columns([3, 2])
-        
         limit_mode_other = c_o_mode.selectbox("他運用上限方式", limit_mode_options, key="limit_mode_other", label_visibility="collapsed")
         
+        # ★ここ修正: formatを指定して表示を切り替え
         if limit_mode_other == "年額定額 (万円)":
-            limit_val_other = c_o_val.number_input("他運用金額", 0.0, 10000.0, step=10.0, key="limit_val_other_yen", label_visibility="collapsed", help="年間何万円まで取り崩すか (0は無制限)")
-            st.caption(f"年間 **{limit_val_other:.0f}万円** まで取り崩します。")
+            limit_val_other = c_o_val.number_input(
+                "他運用金額", 0, 10000, step=10, 
+                key="limit_val_other_yen", label_visibility="collapsed", format="%d", help="年間何万円まで (0=無制限)"
+            )
+            st.caption(f"年間 **{limit_val_other}万円** まで")
             other_limit_yen_calc = limit_val_other * 10000
         else:
-            limit_val_other = c_o_val.number_input("他運用割合", 0.0, 100.0, step=0.1, key="limit_val_other_pct", label_visibility="collapsed", help="資産の何％まで取り崩すか")
+            limit_val_other = c_o_val.number_input(
+                "他運用割合", 0.0, 100.0, step=0.1, 
+                key="limit_val_other_pct", label_visibility="collapsed", format="%.1f", help="資産の何％まで"
+            )
             if limit_mode_other == "総資産比率 (%)":
-                st.caption(f"その年の **総資産の {limit_val_other:.1f}%** まで。")
+                st.caption(f"その年の **総資産の {limit_val_other:.1f}%** まで")
             else:
-                st.caption(f"その年の **他運用残高の {limit_val_other:.1f}%** まで。")
+                st.caption(f"その年の **他運用残高の {limit_val_other:.1f}%** まで")
             other_limit_yen_calc = limit_val_other
 
     with tab5:
@@ -346,10 +344,7 @@ def main():
         if can_invest and age <= nisa_stop_age:
             raw_nisa_add = nisa_monthly * 12
             lifetime_room = max(0, NISA_LIFETIME_LIMIT - nisa_principal)
-            
-            # 積立枠上限(120万)と生涯枠上限をチェック
             val_nisa_add = min(raw_nisa_add, NISA_TSUMITATE_LIMIT, lifetime_room)
-            
             nisa_tsumitate_year = val_nisa_add
             
         val_paypay_add = paypay_monthly * 12 if (can_invest and age <= paypay_stop_age) else 0
@@ -385,29 +380,27 @@ def main():
         if cash < 0:
             shortage = abs(cash)
             
-            # ★現在の総資産（投資資産）を計算
+            # 総資産（投資資産）
             current_total_investments = nisa + paypay + k401
 
-            # ★上限額の計算関数 (その年の状況に応じて上限額を決定)
+            # 上限額の計算
             def calc_actual_limit(mode, val, current_asset, total_assets):
                 if mode == "年額定額 (万円)":
-                    if val == 0: return float('inf') # 0なら無制限
-                    return val # 既に円単位で渡ってきていると仮定
+                    if val == 0: return float('inf') 
+                    return val # UIで円単位入力処理済みと仮定したいが、変数は「limit_val_nisa_yen」など
+                    # 注意: 変数 *_yen_calc はUI側で「万円 -> 円」または「%」が入っている
                 elif mode == "総資産比率 (%)":
                     return total_assets * (val / 100)
                 elif mode == "残高比率 (%)":
                     return current_asset * (val / 100)
                 return float('inf')
 
-            # NISAと他運用のその年の上限額(円)を決定
-            # UI側で金額モードの場合は既に円単位で格納されている変数を利用
             limit_nisa_yen = calc_actual_limit(limit_mode_nisa, nisa_limit_yen_calc, nisa, current_total_investments)
             limit_other_yen = calc_actual_limit(limit_mode_other, other_limit_yen_calc, paypay, current_total_investments)
 
-            # 引出し処理関数
+            # 引出し処理
             def withdraw_asset_logic(needed, current_val, principal_val, is_nisa, limit_yen):
                 can_pay = min(needed, current_val, limit_yen)
-                
                 new_val = current_val - can_pay
                 new_principal = principal_val
                 
@@ -437,26 +430,20 @@ def main():
             
             cash = -shortage
 
-        # 10. ダム機能 (成長投資枠)
+        # 10. ダム機能
         if age < 50: target = dam_1
         elif age < 60: target = dam_2
         else: target = dam_3
 
-        # 現金がターゲットを超えていて、かつ積立終了年齢以下ならNISAへ
         if cash > target and age <= nisa_stop_age:
             surplus = cash - target
-            
-            # 成長枠上限(240万)と生涯枠残りを計算
-            nisa_remaining_space = max(0, NISA_GROWTH_LIMIT - nisa_tsumitate_year) # 成長枠は積立枠と重複可能だが、ここでは分かりやすく別枠として計算
+            nisa_remaining_space = max(0, NISA_GROWTH_LIMIT - nisa_tsumitate_year)
             lifetime_room = max(0, NISA_LIFETIME_LIMIT - nisa_principal)
-            
-            # 余剰金、成長枠、生涯枠 の中で最も小さい額を移動
             move = min(surplus, nisa_remaining_space, lifetime_room)
             
             cash -= move
             nisa += move
             nisa_principal += move
-            
             nisa_growth_year = move
 
         records.append({
@@ -474,7 +461,6 @@ def main():
     # --- 結果表示 ---
     df = pd.DataFrame(records)
 
-    # 1. グラフ
     if "graph_mode" not in st.session_state:
         st.session_state["graph_mode"] = "積み上げ (総資産)"
     current_mode = st.session_state["graph_mode"]
