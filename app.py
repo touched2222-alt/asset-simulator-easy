@@ -80,8 +80,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 💰 簡易資産シミュレータ v2.9")
-    st.caption("Ver. With '4% Rule' Explanation")
+    st.markdown("### 💰 簡易資産シミュレータ v3.0")
+    st.caption("Ver. Added Visitor Counter")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -303,7 +303,6 @@ def main():
             st.metric("必要な総資産額", f"{required_asset/10000:,.0f} 万円")
             st.info(f"💡 **{required_asset/10000:,.0f}万円** を年利 **{target_interest_rate}%** で運用すれば、元本を減らさずに毎年 **{target_yearly_income}万円** を受け取り続けられます。")
             
-            # ★ 追加: 4%ルール解説
             st.markdown("---")
             with st.expander("📚 4%ルールとは？（豆知識）"):
                 st.markdown("""
@@ -317,6 +316,12 @@ def main():
                 """)
         else:
             st.warning("利回りを0より大きく設定してください。")
+
+    # --- カウンター表示 (サイドバーの下の方) ---
+    st.sidebar.markdown("---")
+    st.sidebar.caption("👀 訪問者数")
+    # バッジサービスを利用してアクセスカウンターを表示 (page_idで一意に識別)
+    st.sidebar.markdown(f"![Visitor Count](https://visitor-badge.laobi.icu/badge?page_id=touched2222_asset_simulator)")
 
     # --- 計算ロジック ---
     records = []
