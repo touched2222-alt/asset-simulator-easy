@@ -13,12 +13,12 @@ DEFAULT_CONFIG = {
     "inc_20s": 300, "inc_30s": 400, "inc_40s": 500, "inc_50s": 600, "inc_60s": 400,
     "age_401k_get": 65, "tax_401k": 12.0, "age_pension": 65, "pension_monthly": 200000, "tax_pension": 15.0,
     
-    # ★変更: 支出を細分化 (60代を一括ではなく、60-64と65+に分割)
+    # 支出設定 (60代を分割)
     "cost_20s": 20, "cost_30s": 25, "cost_40s": 30, "cost_50s": 30, 
-    "cost_6064": 28, "cost_65": 25, # New
+    "cost_6064": 28, "cost_65": 25,
     
     "exp_20s": 50, "exp_30s": 100, "exp_40s": 150, "exp_50s": 100, 
-    "exp_6064": 80, "exp_65": 50,   # New
+    "exp_6064": 80, "exp_65": 50,
 
     "nisa_monthly": 50000,
     "nisa_stop_age": 65,
@@ -65,12 +65,11 @@ def get_download_json():
     return json.dumps(save_data, indent=4, ensure_ascii=False)
 
 def next_step_guide(text):
-    """次のステップへの誘導を表示する関数"""
     st.markdown("---")
     st.info(f"👉 **入力完了ですか？ 上のタブで『{text}』へ進んでください**")
 
 # --- メインアプリ ---
-st.set_page_config(page_title="簡易資産シミュレータ v5.7", page_icon="💎", layout="wide")
+st.set_page_config(page_title="簡易資産シミュレータ v5.8", page_icon="💎", layout="wide")
 
 def main():
     if "first_load_done" not in st.session_state:
@@ -79,12 +78,11 @@ def main():
                 st.session_state[key] = value
         st.session_state["first_load_done"] = True
     
-    # ★デザインカスタマイズ (Geometric Chic Theme)
+    # ★デザインカスタマイズ
     st.markdown("""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@300;400;500&display=swap');
         
-        /* ベース設定 */
         html, body, [class*="css"] {
             font-family: 'Zen Kaku Gothic New', sans-serif;
             color: #4a4a4a;
@@ -97,7 +95,6 @@ def main():
             background-size: 40px 40px;
         }
 
-        /* サイドバー */
         [data-testid="stSidebar"] {
             background-color: #f7f7f5;
             border-right: 1px solid #e0e0e0;
@@ -106,7 +103,6 @@ def main():
             color: #5c5c5c !important;
         }
 
-        /* 見出し */
         h1, h2, h3 {
             font-family: 'Shippori Mincho', serif;
             color: #8d6e63 !important;
@@ -160,7 +156,6 @@ def main():
             z-index: 5;
         }
 
-        /* Metric Card */
         [data-testid="stMetric"] {
             background-color: #ffffff;
             border: 1px solid #eeeeee;
@@ -181,7 +176,6 @@ def main():
             color: #7cb342 !important;
         }
 
-        /* Custom Card */
         .custom-card {
             background-color: #fff;
             border: 1px solid #e0e0e0;
@@ -191,7 +185,6 @@ def main():
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         }
 
-        /* Buttons */
         .stButton button {
             background-color: #d7ccc8;
             color: #4e342e !important;
@@ -204,7 +197,6 @@ def main():
             color: white !important;
         }
         
-        /* Inputs */
         .stNumberInput input, .stSelectbox div[data-baseweb="select"] {
             border-radius: 4px;
             border: 1px solid #d0d0d0 !important;
@@ -220,8 +212,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("💎 簡易資産シミュレータ v5.7")
-    st.caption("Ver. Split Expenses 60-64/65+")
+    st.title("💎 簡易資産シミュレータ v5.8")
+    st.caption("Ver. Bugfix: Expense Split Logic")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -301,7 +293,7 @@ def main():
         cost_40s = st.number_input("40代 生活費", 0, 500, step=1, key="cost_40s", help=cost_help) * 10000
         cost_50s = st.number_input("50代 生活費", 0, 500, step=1, key="cost_50s", help=cost_help) * 10000
         
-        # ★変更: 60代を分割
+        # 60代を分割
         c_60, c_65 = st.columns(2)
         with c_60:
             cost_6064 = st.number_input("60〜64歳 生活費", 0, 500, step=1, key="cost_6064", help="再雇用期間など") * 10000
@@ -315,7 +307,7 @@ def main():
         exp_40s = st.number_input("40代 特別出費", 0, 5000, step=10, key="exp_40s", help=exp_help) * 10000
         exp_50s = st.number_input("50代 特別出費", 0, 5000, step=10, key="exp_50s", help=exp_help) * 10000
         
-        # ★変更: 60代を分割
+        # 60代を分割
         c_e60, c_e65 = st.columns(2)
         with c_e60:
             exp_6064 = st.number_input("60〜64歳 特別出費", 0, 5000, step=10, key="exp_6064") * 10000
@@ -557,8 +549,8 @@ def main():
         elif age < 40: base_monthly_cost = cost_30s
         elif age < 50: base_monthly_cost = cost_40s
         elif age < 60: base_monthly_cost = cost_50s
-        elif age < 65: base_monthly_cost = cost_6064 # New
-        else: base_monthly_cost = cost_65 # New
+        elif age < 65: base_monthly_cost = cost_6064
+        else: base_monthly_cost = cost_65
 
         if age > age_work_last:
             current_cost = base_monthly_cost * 12 * ((1 + inflation) ** (age - age_work_last))
@@ -566,7 +558,7 @@ def main():
             current_cost = base_monthly_cost * 12
 
         # 4. 積立 (つみたて投資枠)
-        val_k401_add = k401_monthly * 12 if (is_working and age < age_401k_get and age <= k401_stop_age) else 0 # 401k stop age
+        val_k401_add = k401_monthly * 12 if (is_working and age < age_401k_get and age <= k401_stop_age) else 0 
         
         nisa_tsumitate_year = 0
         nisa_growth_year = 0
@@ -608,6 +600,30 @@ def main():
 
         # 8. キャッシュフロー
         cash_flow = (salary + pension + event_inc) - (current_cost + annual_extra_exp + event_dec + val_k401_add + val_nisa_add + val_paypay_add)
+        # ★修正: 60代の特別支出のロジック
+        annual_extra_exp_check = 0
+        if is_working:
+            if age < 30: annual_extra_exp_check = exp_20s
+            elif age < 40: annual_extra_exp_check = exp_30s
+            elif age < 50: annual_extra_exp_check = exp_40s
+            elif age < 60: annual_extra_exp_check = exp_50s
+            else: 
+                # 60代の判定ロジック (60-64 vs 65+)
+                if age < 65: annual_extra_exp_check = exp_6064
+                else: annual_extra_exp_check = exp_65
+        else:
+            # 働いていない期間（リタイア後）も特別支出は発生すべき
+            # 年齢ベースで判定
+            if age < 30: annual_extra_exp_check = exp_20s
+            elif age < 40: annual_extra_exp_check = exp_30s
+            elif age < 50: annual_extra_exp_check = exp_40s
+            elif age < 60: annual_extra_exp_check = exp_50s
+            elif age < 65: annual_extra_exp_check = exp_6064
+            else: annual_extra_exp_check = exp_65
+            
+        # 再計算: キャッシュフロー
+        # 上記で求めた annual_extra_exp_check を使用
+        cash_flow = (salary + pension + event_inc) - (current_cost + annual_extra_exp_check + event_dec + val_k401_add + val_nisa_add + val_paypay_add)
         cash += cash_flow
 
         # 9. 補填
@@ -693,20 +709,13 @@ def main():
     # --- 結果表示 ---
     df = pd.DataFrame(records)
 
-    # 1. グラフ (Geometric Chic Colors)
+    # 1. グラフ
     if "graph_mode" not in st.session_state:
         st.session_state["graph_mode"] = "積み上げ (総資産)"
     current_mode = st.session_state["graph_mode"]
 
     df_melt = df.melt(id_vars=["Age"], value_vars=["Cash", "401k", "NISA", "Other"], var_name="Asset", value_name="Amount")
-    
-    # 落ち着いた大人の配色
-    colors = {
-        "Cash": "#90a4ae",  # Blue Grey
-        "NISA": "#e57373",  # Muted Red
-        "401k": "#81c784",  # Muted Green
-        "Other": "#ba68c8"  # Muted Purple
-    }
+    colors = {"Cash": "#90a4ae", "NISA": "#e57373", "401k": "#81c784", "Other": "#ba68c8"}
     
     if current_mode == "積み上げ (総資産)":
         fig = px.area(df_melt, x="Age", y="Amount", color="Asset", 
