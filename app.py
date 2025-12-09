@@ -12,13 +12,19 @@ DEFAULT_CONFIG = {
     "age_work_last": 64,
     "inc_20s": 300, "inc_30s": 400, "inc_40s": 500, "inc_50s": 600, "inc_60s": 400,
     "age_401k_get": 65, "tax_401k": 12.0, "age_pension": 65, "pension_monthly": 200000, "tax_pension": 15.0,
-    "cost_20s": 20, "cost_30s": 25, "cost_40s": 30, "cost_50s": 30, "cost_60s": 25,
-    "exp_20s": 50, "exp_30s": 100, "exp_40s": 150, "exp_50s": 100, "exp_60s": 50,
+    
+    # ★変更: 支出を細分化 (60代を一括ではなく、60-64と65+に分割)
+    "cost_20s": 20, "cost_30s": 25, "cost_40s": 30, "cost_50s": 30, 
+    "cost_6064": 28, "cost_65": 25, # New
+    
+    "exp_20s": 50, "exp_30s": 100, "exp_40s": 150, "exp_50s": 100, 
+    "exp_6064": 80, "exp_65": 50,   # New
+
     "nisa_monthly": 50000,
     "nisa_stop_age": 65,
     "paypay_monthly": 300, "paypay_stop_age": 70,
-    "k401_monthly": 20000,
-    "k401_stop_age": 60, # ★追加: 401k積立終了年齢
+    "k401_monthly": 55000,
+    "k401_stop_age": 60,
     "dam_1": 700, "dam_2": 700, "dam_3": 500,
     "priority": "新NISAから先に使う",
     "nisa_start_age": 65, "paypay_start_age": 60,
@@ -64,7 +70,7 @@ def next_step_guide(text):
     st.info(f"👉 **入力完了ですか？ 上のタブで『{text}』へ進んでください**")
 
 # --- メインアプリ ---
-st.set_page_config(page_title="簡易資産シミュレータ v5.6", page_icon="💎", layout="wide")
+st.set_page_config(page_title="簡易資産シミュレータ v5.7", page_icon="💎", layout="wide")
 
 def main():
     if "first_load_done" not in st.session_state:
@@ -214,8 +220,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("💎 簡易資産シミュレータ v5.6")
-    st.caption("Ver. Independent 401k Contribution End Age")
+    st.title("💎 簡易資産シミュレータ v5.7")
+    st.caption("Ver. Split Expenses 60-64/65+")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -280,7 +286,7 @@ def main():
         
         st.markdown("---")
         st.subheader("🐢 年金・退職金")
-        age_401k_get = st.number_input("401k受取年齢", 50, 80, key="age_401k_get", help="積み立てたiDeCo/401kを一括で受け取る年齢です。")
+        age_401k_get = st.number_input("401k受取年齢", 50, 80, key="age_401k_get")
         tax_401k = st.number_input("401k受取税率(%)", 0.0, 50.0, step=0.1, format="%.1f", key="tax_401k") / 100
         age_pension = st.number_input("年金開始年齢", 60, 75, key="age_pension")
         pension_monthly = st.number_input("年金月額(額面・円)", 0, 500000, step=10000, key="pension_monthly")
@@ -294,7 +300,13 @@ def main():
         cost_30s = st.number_input("30代 生活費", 0, 500, step=1, key="cost_30s", help=cost_help) * 10000
         cost_40s = st.number_input("40代 生活費", 0, 500, step=1, key="cost_40s", help=cost_help) * 10000
         cost_50s = st.number_input("50代 生活費", 0, 500, step=1, key="cost_50s", help=cost_help) * 10000
-        cost_60s = st.number_input("60歳〜 生活費", 0, 500, step=1, key="cost_60s", help=cost_help) * 10000
+        
+        # ★変更: 60代を分割
+        c_60, c_65 = st.columns(2)
+        with c_60:
+            cost_6064 = st.number_input("60〜64歳 生活費", 0, 500, step=1, key="cost_6064", help="再雇用期間など") * 10000
+        with c_65:
+            cost_65 = st.number_input("65歳〜 生活費", 0, 500, step=1, key="cost_65", help="年金生活など") * 10000
         
         st.markdown("##### 年間特別支出 (万円/年)")
         exp_help = "旅行、帰省、家電買替、車検など、年単位で発生する特別なお金です。"
@@ -302,7 +314,13 @@ def main():
         exp_30s = st.number_input("30代 特別出費", 0, 5000, step=10, key="exp_30s", help=exp_help) * 10000
         exp_40s = st.number_input("40代 特別出費", 0, 5000, step=10, key="exp_40s", help=exp_help) * 10000
         exp_50s = st.number_input("50代 特別出費", 0, 5000, step=10, key="exp_50s", help=exp_help) * 10000
-        exp_60s = st.number_input("60歳〜 特別出費", 0, 5000, step=10, key="exp_60s", help=exp_help) * 10000
+        
+        # ★変更: 60代を分割
+        c_e60, c_e65 = st.columns(2)
+        with c_e60:
+            exp_6064 = st.number_input("60〜64歳 特別出費", 0, 5000, step=10, key="exp_6064") * 10000
+        with c_e65:
+            exp_65 = st.number_input("65歳〜 特別出費", 0, 5000, step=10, key="exp_65") * 10000
 
         next_step_guide("STEP 3: 積立")
 
@@ -311,7 +329,7 @@ def main():
         col_t1, col_t2 = st.columns(2)
         with col_t1:
             st.markdown("**1. NISA つみたて投資枠**")
-            nisa_monthly = st.number_input("月額積立(円)", 0, 500000, step=1000, key="nisa_monthly", help="年間120万円が上限です。")
+            nisa_monthly = st.number_input("月額積立(円)", 0, 500000, step=1000, key="nisa_monthly")
             nisa_year_val = nisa_monthly * 12
             if nisa_year_val <= 1200000:
                 st.info(f"✅ 年間 {nisa_year_val/10000:.0f}万 / 120万")
@@ -326,7 +344,6 @@ def main():
             
         st.markdown("---")
         
-        # ★ 修正: 401kの積立設定
         st.markdown("**3. 401k/iDeCo (確定拠出年金)**")
         c_k1, c_k2 = st.columns(2)
         with c_k1:
@@ -540,7 +557,8 @@ def main():
         elif age < 40: base_monthly_cost = cost_30s
         elif age < 50: base_monthly_cost = cost_40s
         elif age < 60: base_monthly_cost = cost_50s
-        else: base_monthly_cost = cost_60s
+        elif age < 65: base_monthly_cost = cost_6064 # New
+        else: base_monthly_cost = cost_65 # New
 
         if age > age_work_last:
             current_cost = base_monthly_cost * 12 * ((1 + inflation) ** (age - age_work_last))
@@ -548,7 +566,7 @@ def main():
             current_cost = base_monthly_cost * 12
 
         # 4. 積立 (つみたて投資枠)
-        val_k401_add = k401_monthly * 12 if (is_working and age < age_401k_get and age <= k401_stop_age) else 0 # ★修正: k401_stop_ageを反映
+        val_k401_add = k401_monthly * 12 if (is_working and age < age_401k_get and age <= k401_stop_age) else 0 # 401k stop age
         
         nisa_tsumitate_year = 0
         nisa_growth_year = 0
@@ -675,14 +693,14 @@ def main():
     # --- 結果表示 ---
     df = pd.DataFrame(records)
 
-    # 1. グラフ
+    # 1. グラフ (Geometric Chic Colors)
     if "graph_mode" not in st.session_state:
         st.session_state["graph_mode"] = "積み上げ (総資産)"
     current_mode = st.session_state["graph_mode"]
 
     df_melt = df.melt(id_vars=["Age"], value_vars=["Cash", "401k", "NISA", "Other"], var_name="Asset", value_name="Amount")
     
-    # 配色 (Geometric Chic)
+    # 落ち着いた大人の配色
     colors = {
         "Cash": "#90a4ae",  # Blue Grey
         "NISA": "#e57373",  # Muted Red
