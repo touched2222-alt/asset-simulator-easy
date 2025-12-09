@@ -5,6 +5,12 @@ import plotly.graph_objects as go
 import json
 import io 
 
+# ==========================================
+# ★ここにあなたのアプリのURLを貼り付けてください
+# （ブラウザのアドレスバーをコピーして上書きしてください）
+SHARE_URL = "https://asset-simulator-easy-4urkwxcgh8csaxtx3bnbba.streamlit.app/"
+# ==========================================
+
 # --- デフォルト設定値 ---
 DEFAULT_CONFIG = {
     "current_age": 33, "end_age": 100,
@@ -69,7 +75,7 @@ def next_step_guide(text):
     st.info(f"👉 **入力完了ですか？ 上のタブで『{text}』へ進んでください**")
 
 # --- メインアプリ ---
-st.set_page_config(page_title="簡易資産シミュレータ v6.9", page_icon="💎", layout="wide")
+st.set_page_config(page_title="簡易資産シミュレータ v7.0", page_icon="💎", layout="wide")
 
 def main():
     if "first_load_done" not in st.session_state:
@@ -159,18 +165,18 @@ def main():
             background-color: #ffffff;
             border: 1px solid #eeeeee;
             border-radius: 4px;
-            padding: 10px 15px; /* パディング少し縮小 */
+            padding: 10px 15px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
             border-left: 4px solid #bcaaa4;
         }
         [data-testid="stMetricLabel"] {
             color: #8d6e63 !important;
-            font-size: 0.8rem !important; /* ラベルも少し小さく */
+            font-size: 0.8rem !important;
         }
         [data-testid="stMetricValue"] {
             color: #4e342e !important;
             font-family: 'Shippori Mincho', serif;
-            font-size: 1.4rem !important; /* ★ここ変更: 文字サイズを小さくして見切れ防止 */
+            font-size: 1.4rem !important;
         }
         [data-testid="stMetricDelta"] {
             color: #7cb342 !important;
@@ -213,8 +219,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("💎 簡易資産シミュレータ v6.9")
-    st.caption("Ver. Smaller Fonts for Metric Cards")
+    st.title("💎 簡易資産シミュレータ v7.0")
+    st.caption("Ver. Custom Share URL")
 
     # --- サイドバー設定 ---
     c_head, c_share = st.sidebar.columns([1, 0.5])
@@ -223,7 +229,7 @@ def main():
     with c_share:
         if st.button("🔗 共有"):
             st.sidebar.info("👇 URLをコピー")
-            st.sidebar.code("https://asset-simulator-easy.streamlit.app/", language=None)
+            st.sidebar.code(SHARE_URL, language=None)
             
     st.sidebar.subheader("📁 設定ファイル")
     col_dl, col_ul = st.sidebar.columns(2)
@@ -416,7 +422,6 @@ def main():
         st.markdown("#### ステップ2: 計算結果")
         if target_interest_rate > 0:
             required_asset = (target_yearly_income * 10000) / (target_interest_rate / 100)
-            # ★フォントサイズ調整: 2.2remへ縮小
             st.markdown(f"""
                 <div class="custom-card">
                     <h4 style="color: #5d4037; margin-bottom: 5px; font-family: 'Shippori Mincho', serif;">必要な総資産額</h4>
@@ -630,7 +635,8 @@ def main():
         c5.metric("✨ その他運用", f"{row['Other']/10000:,.0f}万円")
     except: st.error("データ取得エラー")
 
-    # --- 2. グラフ ---
+    # --- 2. グラフ (縦線を追加 & ツールチップ修正) ---
+    # ★ グラフを「一番上のコンテナ」に入れる
     with graph_container:
         st.markdown("<br>", unsafe_allow_html=True)
         
