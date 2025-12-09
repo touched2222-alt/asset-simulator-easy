@@ -69,7 +69,7 @@ def next_step_guide(text):
     st.info(f"👉 **入力完了ですか？ 上のタブで『{text}』へ進んでください**")
 
 # --- メインアプリ ---
-st.set_page_config(page_title="簡易資産シミュレータ v6.6", page_icon="💎", layout="wide")
+st.set_page_config(page_title="簡易資産シミュレータ v6.7", page_icon="💎", layout="wide")
 
 def main():
     if "first_load_done" not in st.session_state:
@@ -212,8 +212,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("💎 簡易資産シミュレータ v6.6")
-    st.caption("Ver. Tooltip Cleaned")
+    st.title("💎 簡易資産シミュレータ v6.7")
+    st.caption("Ver. Bugfix JSON Overwrite Loop")
 
     # --- サイドバー設定 ---
     c_head, c_share = st.sidebar.columns([1, 0.5])
@@ -238,8 +238,17 @@ def main():
         uploaded_file = st.file_uploader(
             "📤 読込", type=["json"], accept_multiple_files=False, label_visibility="collapsed"
         )
+    
+    # ★修正ポイント: ファイルIDを比較して「新しいファイル」の時だけ読み込む
     if uploaded_file is not None:
-        load_uploaded_settings(uploaded_file)
+        # ファイル名とサイズで一意のIDを作る
+        file_id = f"{uploaded_file.name}_{uploaded_file.size}"
+        
+        # まだこのファイルを読み込んでいない場合のみ実行
+        if "last_loaded_file_id" not in st.session_state or st.session_state["last_loaded_file_id"] != file_id:
+            load_uploaded_settings(uploaded_file)
+            st.session_state["last_loaded_file_id"] = file_id
+            st.rerun() # 画面をリフレッシュして値を反映
     
     st.sidebar.markdown("---") 
     
@@ -648,9 +657,7 @@ def main():
                           color_discrete_map=colors,
                           custom_data=["Total"])
 
-        # ★ 修正: ヘッダーに年齢を表示し、ツールチップから重複を削除
-        fig.update_xaxes(ticksuffix="歳") # ヘッダーを「33歳」などにする
-
+        # 透明なTotalラインを追加
         fig.add_trace(go.Scatter(
             x=df['Age'], y=df['Total'],
             mode='lines',
@@ -661,6 +668,7 @@ def main():
             showlegend=True
         ))
 
+        # ツールチップのフォーマット修正 (年齢=, 総資産= を追加)
         fig.update_traces(
             selector=dict(type='area'),
             # Bodyから年齢を削除
@@ -681,6 +689,10 @@ def main():
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
         
+        # ★ 修正: ヘッダーに年齢を表示し、ツールチップから重複を削除
+        fig.update_xaxes(ticksuffix="歳") # ヘッダーを「33歳」などにする
+        
+        # 縦線追加
         fig.add_vline(x=target_age, line_width=2, line_dash="dash", line_color="#831843")
 
         st.plotly_chart(fig, use_container_width=True)
