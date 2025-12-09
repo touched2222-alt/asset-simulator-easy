@@ -69,7 +69,7 @@ def next_step_guide(text):
     st.info(f"👉 **入力完了ですか？ 上のタブで『{text}』へ進んでください**")
 
 # --- メインアプリ ---
-st.set_page_config(page_title="簡易資産シミュレータ v5.8", page_icon="💎", layout="wide")
+st.set_page_config(page_title="簡易資産シミュレータ v5.9", page_icon="💎", layout="wide")
 
 def main():
     if "first_load_done" not in st.session_state:
@@ -212,8 +212,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("💎 簡易資産シミュレータ v5.8")
-    st.caption("Ver. Bugfix: Expense Split Logic")
+    st.title("💎 簡易資産シミュレータ v5.9")
+    st.caption("Ver. Bugfix Fixed NameError")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -527,17 +527,26 @@ def main():
         paypay *= (1 + r_paypay)
         if age < age_401k_get: k401 *= (1 + r_401k)
 
-        # 2. 収入
+        # 2. 収入 & 特別支出 (年齢ベースで決定)
         is_working = (age <= age_work_last)
         salary = 0
-        annual_extra_exp = 0
-
+        
+        # 収入は働いている時だけ
         if is_working:
-            if age < 30: salary = inc_20s; annual_extra_exp = exp_20s
-            elif age < 40: salary = inc_30s; annual_extra_exp = exp_30s
-            elif age < 50: salary = inc_40s; annual_extra_exp = exp_40s
-            elif age < 60: salary = inc_50s; annual_extra_exp = exp_50s
-            else: salary = inc_60s; annual_extra_exp = exp_60s
+            if age < 30: salary = inc_20s
+            elif age < 40: salary = inc_30s
+            elif age < 50: salary = inc_40s
+            elif age < 60: salary = inc_50s
+            else: salary = inc_60s
+
+        # 特別支出は年齢で決まる (働いてなくてもかかる)
+        annual_extra_exp = 0
+        if age < 30: annual_extra_exp = exp_20s
+        elif age < 40: annual_extra_exp = exp_30s
+        elif age < 50: annual_extra_exp = exp_40s
+        elif age < 60: annual_extra_exp = exp_50s
+        elif age < 65: annual_extra_exp = exp_6064
+        else: annual_extra_exp = exp_65
         
         pension = 0
         if age >= age_pension:
@@ -600,30 +609,6 @@ def main():
 
         # 8. キャッシュフロー
         cash_flow = (salary + pension + event_inc) - (current_cost + annual_extra_exp + event_dec + val_k401_add + val_nisa_add + val_paypay_add)
-        # ★修正: 60代の特別支出のロジック
-        annual_extra_exp_check = 0
-        if is_working:
-            if age < 30: annual_extra_exp_check = exp_20s
-            elif age < 40: annual_extra_exp_check = exp_30s
-            elif age < 50: annual_extra_exp_check = exp_40s
-            elif age < 60: annual_extra_exp_check = exp_50s
-            else: 
-                # 60代の判定ロジック (60-64 vs 65+)
-                if age < 65: annual_extra_exp_check = exp_6064
-                else: annual_extra_exp_check = exp_65
-        else:
-            # 働いていない期間（リタイア後）も特別支出は発生すべき
-            # 年齢ベースで判定
-            if age < 30: annual_extra_exp_check = exp_20s
-            elif age < 40: annual_extra_exp_check = exp_30s
-            elif age < 50: annual_extra_exp_check = exp_40s
-            elif age < 60: annual_extra_exp_check = exp_50s
-            elif age < 65: annual_extra_exp_check = exp_6064
-            else: annual_extra_exp_check = exp_65
-            
-        # 再計算: キャッシュフロー
-        # 上記で求めた annual_extra_exp_check を使用
-        cash_flow = (salary + pension + event_inc) - (current_cost + annual_extra_exp_check + event_dec + val_k401_add + val_nisa_add + val_paypay_add)
         cash += cash_flow
 
         # 9. 補填
