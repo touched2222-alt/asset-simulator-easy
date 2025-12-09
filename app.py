@@ -17,7 +17,8 @@ DEFAULT_CONFIG = {
     "nisa_monthly": 50000,
     "nisa_stop_age": 65,
     "paypay_monthly": 300, "paypay_stop_age": 70,
-    "k401_monthly": 55000,
+    "k401_monthly": 20000,
+    "k401_stop_age": 60, # ★追加: 401k積立終了年齢
     "dam_1": 700, "dam_2": 700, "dam_3": 500,
     "priority": "新NISAから先に使う",
     "nisa_start_age": 65, "paypay_start_age": 60,
@@ -63,7 +64,7 @@ def next_step_guide(text):
     st.info(f"👉 **入力完了ですか？ 上のタブで『{text}』へ進んでください**")
 
 # --- メインアプリ ---
-st.set_page_config(page_title="簡易資産シミュレータ v5.5", page_icon="💎", layout="wide")
+st.set_page_config(page_title="簡易資産シミュレータ v5.6", page_icon="💎", layout="wide")
 
 def main():
     if "first_load_done" not in st.session_state:
@@ -77,20 +78,20 @@ def main():
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@300;400;500&display=swap');
         
-        /* ベース設定: 落ち着いたグレージュ背景 */
+        /* ベース設定 */
         html, body, [class*="css"] {
             font-family: 'Zen Kaku Gothic New', sans-serif;
             color: #4a4a4a;
         }
         .stApp {
-            background-color: #fcfcfc; /* ほぼ白 */
+            background-color: #fcfcfc;
             background-image: 
                 linear-gradient(#f0f0f0 1px, transparent 1px),
                 linear-gradient(90deg, #f0f0f0 1px, transparent 1px);
-            background-size: 40px 40px; /* 方眼紙のような幾何学模様 */
+            background-size: 40px 40px;
         }
 
-        /* サイドバー: シックなグレー */
+        /* サイドバー */
         [data-testid="stSidebar"] {
             background-color: #f7f7f5;
             border-right: 1px solid #e0e0e0;
@@ -99,10 +100,10 @@ def main():
             color: #5c5c5c !important;
         }
 
-        /* 見出し: 明朝体でエレガントに、色はブロンズ/カッパー系 */
+        /* 見出し */
         h1, h2, h3 {
             font-family: 'Shippori Mincho', serif;
-            color: #8d6e63 !important; /* 落ち着いたブラウン・カッパー */
+            color: #8d6e63 !important;
             font-weight: 700 !important;
             letter-spacing: 0.05em;
         }
@@ -111,17 +112,15 @@ def main():
             font-weight: 600 !important;
         }
         
-        /* --- ステップフロー型タブデザイン (シック版) --- */
-        
+        /* タブデザイン */
         .stTabs [data-baseweb="tab-list"] {
             gap: 0px;
             border-bottom: none;
             padding-bottom: 20px;
             flex-wrap: wrap;
         }
-        
         .stTabs [data-baseweb="tab"] {
-            background-color: #e0e0e0; /* 未選択：グレー */
+            background-color: #e0e0e0;
             color: #757575;
             border: none;
             border-radius: 0;
@@ -130,10 +129,7 @@ def main():
             font-family: 'Zen Kaku Gothic New', sans-serif;
             font-weight: 500;
             font-size: 0.9rem;
-            
-            /* 矢印形状 */
             clip-path: polygon(90% 0, 100% 50%, 90% 100%, 0% 100%, 10% 50%, 0% 0%);
-            
             z-index: 1;
             transition: all 0.2s ease;
             flex-grow: 1;
@@ -141,13 +137,10 @@ def main():
             text-align: center;
             min-width: 100px;
         }
-
         .stTabs [data-baseweb="tab"]:first-child {
             clip-path: polygon(90% 0, 100% 50%, 90% 100%, 0% 100%, 0% 0%);
             padding-left: 10px;
         }
-
-        /* 選択中のタブ: カッパー〜ベージュのグラデーション */
         .stTabs [aria-selected="true"] {
             background: linear-gradient(to right, #a1887f, #d7ccc8) !important;
             color: #3e2723 !important;
@@ -155,23 +148,20 @@ def main():
             font-weight: 700;
             text-shadow: 0px 1px 1px rgba(255,255,255,0.3);
         }
-        
         .stTabs [data-baseweb="tab"]:hover {
             background-color: #d7ccc8;
             color: #5d4037;
             z-index: 5;
         }
 
-        /* --- その他デザイン --- */
-
-        /* カードデザイン: シンプルでフラット寄り */
+        /* Metric Card */
         [data-testid="stMetric"] {
             background-color: #ffffff;
             border: 1px solid #eeeeee;
-            border-radius: 4px; /* 角は少しだけ丸く */
+            border-radius: 4px;
             padding: 16px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-            border-left: 4px solid #bcaaa4; /* 左にアクセントカラー */
+            border-left: 4px solid #bcaaa4;
         }
         [data-testid="stMetricLabel"] {
             color: #8d6e63 !important;
@@ -182,10 +172,10 @@ def main():
             font-family: 'Shippori Mincho', serif;
         }
         [data-testid="stMetricDelta"] {
-            color: #7cb342 !important; /* 落ち着いたグリーン */
+            color: #7cb342 !important;
         }
 
-        /* カスタムカード（オマケタブ用） */
+        /* Custom Card */
         .custom-card {
             background-color: #fff;
             border: 1px solid #e0e0e0;
@@ -195,7 +185,7 @@ def main():
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         }
 
-        /* ボタン: 落ち着いたカッパー色 */
+        /* Buttons */
         .stButton button {
             background-color: #d7ccc8;
             color: #4e342e !important;
@@ -208,17 +198,14 @@ def main():
             color: white !important;
         }
         
-        /* 入力フォーム: シンプル */
+        /* Inputs */
         .stNumberInput input, .stSelectbox div[data-baseweb="select"] {
             border-radius: 4px;
             border: 1px solid #d0d0d0 !important;
             background-color: #fafafa;
         }
         
-        /* 区切り線 */
         hr { border-color: #e0e0e0; }
-        
-        /* 情報ボックスの色味調整 */
         .stAlert {
             background-color: #f5f5f5;
             color: #424242;
@@ -227,8 +214,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("💎 簡易資産シミュレータ v5.5")
-    st.caption("Ver. Geometric Chic Design")
+    st.title("💎 簡易資産シミュレータ v5.6")
+    st.caption("Ver. Independent 401k Contribution End Age")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -252,7 +239,6 @@ def main():
     
     st.sidebar.markdown("---") 
     
-    # ★ タブ名 (シンプルに)
     tab1, tab2, tab3, tab4, tab5, tab6 = st.sidebar.tabs([
         "1.基本", "2.収支", "3.積立", "4.取崩", "5.臨時", "6.完了"
     ])
@@ -294,7 +280,7 @@ def main():
         
         st.markdown("---")
         st.subheader("🐢 年金・退職金")
-        age_401k_get = st.number_input("401k受取年齢", 50, 80, key="age_401k_get")
+        age_401k_get = st.number_input("401k受取年齢", 50, 80, key="age_401k_get", help="積み立てたiDeCo/401kを一括で受け取る年齢です。")
         tax_401k = st.number_input("401k受取税率(%)", 0.0, 50.0, step=0.1, format="%.1f", key="tax_401k") / 100
         age_pension = st.number_input("年金開始年齢", 60, 75, key="age_pension")
         pension_monthly = st.number_input("年金月額(額面・円)", 0, 500000, step=10000, key="pension_monthly")
@@ -325,7 +311,7 @@ def main():
         col_t1, col_t2 = st.columns(2)
         with col_t1:
             st.markdown("**1. NISA つみたて投資枠**")
-            nisa_monthly = st.number_input("月額積立(円)", 0, 500000, step=1000, key="nisa_monthly")
+            nisa_monthly = st.number_input("月額積立(円)", 0, 500000, step=1000, key="nisa_monthly", help="年間120万円が上限です。")
             nisa_year_val = nisa_monthly * 12
             if nisa_year_val <= 1200000:
                 st.info(f"✅ 年間 {nisa_year_val/10000:.0f}万 / 120万")
@@ -339,21 +325,28 @@ def main():
             paypay_stop_age = st.number_input("他運用積立終了年齢", 20, 100, key="paypay_stop_age")
             
         st.markdown("---")
-        st.write("※401kは「働く期間」かつ「受取年齢の前」まで積立を行います。")
-        k401_monthly = st.number_input("401k積立(月/円)", 0, 500000, step=1000, key="k401_monthly")
+        
+        # ★ 修正: 401kの積立設定
+        st.markdown("**3. 401k/iDeCo (確定拠出年金)**")
+        c_k1, c_k2 = st.columns(2)
+        with c_k1:
+            k401_monthly = st.number_input("401k積立(月/円)", 0, 500000, step=1000, key="k401_monthly", help="給与天引きされる掛金です。")
+        with c_k2:
+            k401_stop_age = st.number_input("401k積立終了年齢", 20, 70, key="k401_stop_age", help="拠出が終了する年齢です（例: 60歳）。")
         
         st.markdown("---")
         st.subheader("💧 最低貯蓄額 (ダム水位)")
         st.caption("最低貯蓄額を超えた余剰金は、**「NISA 成長投資枠 (最大年240万)」** を埋めるために自動投資されます。")
-        dam_1 = st.number_input("〜49歳 最低貯蓄(万)", 0, 10000, step=50, key="dam_1") * 10000
-        dam_2 = st.number_input("50代 最低貯蓄(万)", 0, 10000, step=50, key="dam_2") * 10000
-        dam_3 = st.number_input("60歳〜 最低貯蓄(万)", 0, 10000, step=50, key="dam_3") * 10000
+        dam_help = "生活防衛資金として、投資に回さずに現金で持っておきたい最低金額です。"
+        dam_1 = st.number_input("〜49歳 最低貯蓄(万)", 0, 10000, step=50, key="dam_1", help=dam_help) * 10000
+        dam_2 = st.number_input("50代 最低貯蓄(万)", 0, 10000, step=50, key="dam_2", help=dam_help) * 10000
+        dam_3 = st.number_input("60歳〜 最低貯蓄(万)", 0, 10000, step=50, key="dam_3", help=dam_help) * 10000
 
         next_step_guide("STEP 4: 取崩")
 
     with tab4:
         st.subheader("🍂 取崩し・補填ルール")
-        priority = st.radio("取り崩し優先順位 (不足時)", ["新NISAから先に使う", "他運用から先に使う"], horizontal=True, key="priority")
+        priority = st.radio("取り崩し優先順位 (不足時)", ["新NISAから先に使う", "他運用から先に使う"], horizontal=True, key="priority", help="現金が足りなくなった時、どちらの資産を優先して売却するかを選びます。")
         
         col_out1, col_out2 = st.columns(2)
         with col_out1:
@@ -451,9 +444,9 @@ def main():
 
         next_step_guide("STEP 6: 完了・オマケ")
 
-    # ★ オマケタブ (解説付き)
+    # ★ オマケタブ
     with tab6:
-        st.subheader("✨ 必要資産額シミュレータ (オマケ)")
+        st.subheader("✨ 必要資産額シミュレータ")
         
         st.markdown("#### ステップ1: 目標の設定")
         target_yearly_income = st.number_input("希望する年間取崩し額 (万円)", 0, 5000, 240, step=10, format="%d", help="配当金や売却益で、毎年受け取りたい金額（手取り）を入力します。")
@@ -465,7 +458,6 @@ def main():
         if target_interest_rate > 0:
             required_asset = (target_yearly_income * 10000) / (target_interest_rate / 100)
             
-            # ★デザイン変更: シックなカード表示
             st.markdown(f"""
                 <div class="custom-card">
                     <h4 style="color: #5d4037; margin-bottom: 5px; font-family: 'Shippori Mincho', serif;">必要な総資産額</h4>
@@ -556,7 +548,7 @@ def main():
             current_cost = base_monthly_cost * 12
 
         # 4. 積立 (つみたて投資枠)
-        val_k401_add = k401_monthly * 12 if (is_working and age < age_401k_get) else 0
+        val_k401_add = k401_monthly * 12 if (is_working and age < age_401k_get and age <= k401_stop_age) else 0 # ★修正: k401_stop_ageを反映
         
         nisa_tsumitate_year = 0
         nisa_growth_year = 0
@@ -604,10 +596,8 @@ def main():
         if cash < 0:
             shortage = abs(cash)
             
-            # 総資産（投資資産）
             current_total_investments = nisa + paypay + k401
 
-            # 上限額の計算
             def calc_actual_limit(mode, val, current_asset, total_assets):
                 if mode == "年額定額 (万円)":
                     if val == 0: return float('inf') 
@@ -621,7 +611,6 @@ def main():
             limit_nisa_yen = calc_actual_limit(limit_mode_nisa, nisa_limit_yen_calc, nisa, current_total_investments)
             limit_other_yen = calc_actual_limit(limit_mode_other, other_limit_yen_calc, paypay, current_total_investments)
 
-            # 引出し処理 (税率対応)
             def withdraw_asset_logic(needed, current_val, principal_val, is_nisa, limit_yen, tax_rate=0.0):
                 gross_needed = needed / (1 - tax_rate) if (1 - tax_rate) > 0 else needed
                 can_withdraw_gross = min(gross_needed, current_val, limit_yen)
@@ -636,7 +625,6 @@ def main():
                 
                 return net_cash_obtained, new_val, new_principal
 
-            # 優先順位分岐
             if priority == "新NISAから先に使う":
                 if age >= nisa_start_age:
                     pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True, limit_nisa_yen, 0.0)
@@ -687,14 +675,14 @@ def main():
     # --- 結果表示 ---
     df = pd.DataFrame(records)
 
-    # 1. グラフ (Geometric Chic Colors)
+    # 1. グラフ
     if "graph_mode" not in st.session_state:
         st.session_state["graph_mode"] = "積み上げ (総資産)"
     current_mode = st.session_state["graph_mode"]
 
     df_melt = df.melt(id_vars=["Age"], value_vars=["Cash", "401k", "NISA", "Other"], var_name="Asset", value_name="Amount")
     
-    # 落ち着いた大人の配色
+    # 配色 (Geometric Chic)
     colors = {
         "Cash": "#90a4ae",  # Blue Grey
         "NISA": "#e57373",  # Muted Red
