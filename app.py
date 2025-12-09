@@ -69,7 +69,7 @@ def next_step_guide(text):
     st.info(f"👉 **入力完了ですか？ 上のタブで『{text}』へ進んでください**")
 
 # --- メインアプリ ---
-st.set_page_config(page_title="簡易資産シミュレータ v6.7", page_icon="💎", layout="wide")
+st.set_page_config(page_title="簡易資産シミュレータ v6.8", page_icon="💎", layout="wide")
 
 def main():
     if "first_load_done" not in st.session_state:
@@ -212,8 +212,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("💎 簡易資産シミュレータ v6.7")
-    st.caption("Ver. Bugfix JSON Overwrite Loop")
+    st.title("💎 簡易資産シミュレータ v6.8")
+    st.caption("Ver. Unified Tooltip Design")
 
     # --- サイドバー設定 ---
     c_head, c_share = st.sidebar.columns([1, 0.5])
@@ -239,16 +239,12 @@ def main():
             "📤 読込", type=["json"], accept_multiple_files=False, label_visibility="collapsed"
         )
     
-    # ★修正ポイント: ファイルIDを比較して「新しいファイル」の時だけ読み込む
     if uploaded_file is not None:
-        # ファイル名とサイズで一意のIDを作る
         file_id = f"{uploaded_file.name}_{uploaded_file.size}"
-        
-        # まだこのファイルを読み込んでいない場合のみ実行
         if "last_loaded_file_id" not in st.session_state or st.session_state["last_loaded_file_id"] != file_id:
             load_uploaded_settings(uploaded_file)
             st.session_state["last_loaded_file_id"] = file_id
-            st.rerun() # 画面をリフレッシュして値を反映
+            st.rerun()
     
     st.sidebar.markdown("---") 
     
@@ -657,28 +653,20 @@ def main():
                           color_discrete_map=colors,
                           custom_data=["Total"])
 
+        # ★ 全てのトレースに共通のフォーマットを適用 (customdataが使える前提)
+        fig.update_traces(
+            hovertemplate="<b>年齢=%{x}</b><br><b>%{data.name}</b>=%{y:,.0f}円<br><b>総資産</b>=%{customdata[0]:,.0f}円<extra></extra>"
+        )
+
         # 透明なTotalラインを追加
         fig.add_trace(go.Scatter(
             x=df['Age'], y=df['Total'],
             mode='lines',
             name='■ 総資産',
             line=dict(width=0, color='rgba(0,0,0,0)'),
-            # Bodyから年齢を削除
             hovertemplate='総資産=%{y:,.0f}円<extra></extra>',
             showlegend=True
         ))
-
-        # ツールチップのフォーマット修正 (年齢=, 総資産= を追加)
-        fig.update_traces(
-            selector=dict(type='area'),
-            # Bodyから年齢を削除
-            hovertemplate="<b>%{data.name}</b>=%{y:,.0f}円<br><b>総資産</b>=%{customdata[0]:,.0f}円<extra></extra>"
-        )
-        if current_mode == "折れ線 (個別推移)":
-            fig.update_traces(
-                selector=dict(type='scatter', mode='lines'),
-                hovertemplate="<b>%{data.name}</b>=%{y:,.0f}円<br><b>総資産</b>=%{customdata[0]:,.0f}円<extra></extra>"
-            )
 
         fig.update_layout(
             hovermode="x unified",
