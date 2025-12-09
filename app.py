@@ -69,7 +69,7 @@ def next_step_guide(text):
     st.info(f"👉 **入力完了ですか？ 上のタブで『{text}』へ進んでください**")
 
 # --- メインアプリ ---
-st.set_page_config(page_title="簡易資産シミュレータ v6.8", page_icon="💎", layout="wide")
+st.set_page_config(page_title="簡易資産シミュレータ v6.9", page_icon="💎", layout="wide")
 
 def main():
     if "first_load_done" not in st.session_state:
@@ -159,17 +159,18 @@ def main():
             background-color: #ffffff;
             border: 1px solid #eeeeee;
             border-radius: 4px;
-            padding: 16px;
+            padding: 10px 15px; /* パディング少し縮小 */
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
             border-left: 4px solid #bcaaa4;
         }
         [data-testid="stMetricLabel"] {
             color: #8d6e63 !important;
-            font-size: 0.85rem !important;
+            font-size: 0.8rem !important; /* ラベルも少し小さく */
         }
         [data-testid="stMetricValue"] {
             color: #4e342e !important;
             font-family: 'Shippori Mincho', serif;
+            font-size: 1.4rem !important; /* ★ここ変更: 文字サイズを小さくして見切れ防止 */
         }
         [data-testid="stMetricDelta"] {
             color: #7cb342 !important;
@@ -212,8 +213,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("💎 簡易資産シミュレータ v6.8")
-    st.caption("Ver. Unified Tooltip Design")
+    st.title("💎 簡易資産シミュレータ v6.9")
+    st.caption("Ver. Smaller Fonts for Metric Cards")
 
     # --- サイドバー設定 ---
     c_head, c_share = st.sidebar.columns([1, 0.5])
@@ -415,10 +416,11 @@ def main():
         st.markdown("#### ステップ2: 計算結果")
         if target_interest_rate > 0:
             required_asset = (target_yearly_income * 10000) / (target_interest_rate / 100)
+            # ★フォントサイズ調整: 2.2remへ縮小
             st.markdown(f"""
                 <div class="custom-card">
                     <h4 style="color: #5d4037; margin-bottom: 5px; font-family: 'Shippori Mincho', serif;">必要な総資産額</h4>
-                    <p style="font-size: 2.8rem; font-weight: 700; color: #4e342e; margin: 0; font-family: 'Shippori Mincho', serif; letter-spacing: 0.05em;">
+                    <p style="font-size: 2.2rem; font-weight: 700; color: #4e342e; margin: 0; font-family: 'Shippori Mincho', serif; letter-spacing: 0.05em;">
                         {required_asset/10000:,.0f}<span style="font-size: 1.2rem; color: #8d6e63;"> 万円</span>
                     </p>
                     <p style="color: #757575; margin-top: 5px; font-size: 0.9rem;">(年利 {target_interest_rate}% で運用した場合)</p>
@@ -628,8 +630,7 @@ def main():
         c5.metric("✨ その他運用", f"{row['Other']/10000:,.0f}万円")
     except: st.error("データ取得エラー")
 
-    # --- 2. グラフ (縦線を追加 & ツールチップ修正) ---
-    # ★ グラフを「一番上のコンテナ」に入れる
+    # --- 2. グラフ ---
     with graph_container:
         st.markdown("<br>", unsafe_allow_html=True)
         
@@ -653,20 +654,27 @@ def main():
                           color_discrete_map=colors,
                           custom_data=["Total"])
 
-        # ★ 全てのトレースに共通のフォーマットを適用 (customdataが使える前提)
-        fig.update_traces(
-            hovertemplate="<b>年齢=%{x}</b><br><b>%{data.name}</b>=%{y:,.0f}円<br><b>総資産</b>=%{customdata[0]:,.0f}円<extra></extra>"
-        )
-
         # 透明なTotalラインを追加
         fig.add_trace(go.Scatter(
             x=df['Age'], y=df['Total'],
             mode='lines',
             name='■ 総資産',
             line=dict(width=0, color='rgba(0,0,0,0)'),
+            # ★ ツールチップから年齢を削除
             hovertemplate='総資産=%{y:,.0f}円<extra></extra>',
             showlegend=True
         ))
+
+        # ★ ツールチップから年齢を削除
+        fig.update_traces(
+            selector=dict(type='area'),
+            hovertemplate="<b>%{data.name}</b>=%{y:,.0f}円<br><b>総資産</b>=%{customdata[0]:,.0f}円<extra></extra>"
+        )
+        if current_mode == "折れ線 (個別推移)":
+            fig.update_traces(
+                selector=dict(type='scatter', mode='lines'),
+                hovertemplate="<b>%{data.name}</b>=%{y:,.0f}円<br><b>総資産</b>=%{customdata[0]:,.0f}円<extra></extra>"
+            )
 
         fig.update_layout(
             hovermode="x unified",
@@ -677,10 +685,9 @@ def main():
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
         
-        # ★ 修正: ヘッダーに年齢を表示し、ツールチップから重複を削除
-        fig.update_xaxes(ticksuffix="歳") # ヘッダーを「33歳」などにする
+        # ★ ヘッダーに年齢を表示（これだけでOK）
+        fig.update_xaxes(ticksuffix="歳") 
         
-        # 縦線追加
         fig.add_vline(x=target_age, line_width=2, line_dash="dash", line_color="#831843")
 
         st.plotly_chart(fig, use_container_width=True)
