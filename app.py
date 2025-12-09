@@ -69,7 +69,7 @@ def next_step_guide(text):
     st.info(f"👉 **入力完了ですか？ 上のタブで『{text}』へ進んでください**")
 
 # --- メインアプリ ---
-st.set_page_config(page_title="簡易資産シミュレータ v6.4", page_icon="💎", layout="wide")
+st.set_page_config(page_title="簡易資産シミュレータ v6.5", page_icon="💎", layout="wide")
 
 def main():
     if "first_load_done" not in st.session_state:
@@ -212,8 +212,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("💎 簡易資産シミュレータ v6.4")
-    st.caption("Ver. Bugfix Layout & V-Line Logic")
+    st.title("💎 簡易資産シミュレータ v6.5")
+    st.caption("Ver. Tooltip Format Improvement")
 
     # --- サイドバー設定 ---
     c_head, c_share = st.sidebar.columns([1, 0.5])
@@ -247,7 +247,7 @@ def main():
         "1.基本", "2.収支", "3.積立", "4.取崩", "5.臨時", "6.完了"
     ])
 
-    # --- 入力 UI ---
+    # --- 入力 UI (以下、ロジック変更なし) ---
     with tab1:
         st.subheader("👤 基本情報の入力")
         current_age = st.number_input("現在年齢", 20, 80, key="current_age")
@@ -455,7 +455,7 @@ def main():
         "NISA元本": int(nisa_principal) 
     })
     
-    # ★ ここからグラフエリアの場所を確保（プレースホルダー）
+    # ★ グラフ用の空箱
     graph_container = st.container()
 
     for age in range(current_age + 1, end_age + 1):
@@ -607,7 +607,7 @@ def main():
             "NISA元本": int(nisa_principal) 
         })
 
-    # --- スライダーと結果表示 (グラフの下) ---
+    # --- 1. スライダー (レイアウト: グラフの下) ---
     st.markdown("### 📅 年齢別 資産チェック")
     target_age = st.slider("確認したい年齢を選択してください", current_age, end_age, 65, label_visibility="collapsed")
     
@@ -623,7 +623,7 @@ def main():
         c5.metric("✨ その他運用", f"{row['Other']/10000:,.0f}万円")
     except: st.error("データ取得エラー")
 
-    # --- グラフ (縦線を追加 & ツールチップ修正) ---
+    # --- 2. グラフ (縦線を追加 & ツールチップ修正) ---
     # ★ グラフを「一番上のコンテナ」に入れる
     with graph_container:
         st.markdown("<br>", unsafe_allow_html=True)
@@ -648,23 +648,25 @@ def main():
                           color_discrete_map=colors,
                           custom_data=["Total"])
 
+        # 透明なTotalラインを追加
         fig.add_trace(go.Scatter(
             x=df['Age'], y=df['Total'],
             mode='lines',
             name='■ 総資産',
             line=dict(width=0, color='rgba(0,0,0,0)'),
-            hovertemplate='%{y:,.0f}円<extra></extra>',
+            hovertemplate='年齢=%{x}<br>総資産=%{y:,.0f}円<extra></extra>', # 修正済み
             showlegend=True
         ))
 
+        # ツールチップのフォーマット修正 (年齢=, 総資産= を追加)
         fig.update_traces(
             selector=dict(type='area'),
-            hovertemplate="<b>%{data.name}</b>: %{y:,.0f}円<extra></extra>"
+            hovertemplate="<b>年齢=%{x}</b><br><b>%{data.name}</b>=%{y:,.0f}円<br><b>総資産</b>=%{customdata[0]:,.0f}円<extra></extra>"
         )
         if current_mode == "折れ線 (個別推移)":
             fig.update_traces(
                 selector=dict(type='scatter', mode='lines'),
-                hovertemplate="<b>%{data.name}</b>: %{y:,.0f}円<extra></extra>"
+                hovertemplate="<b>年齢=%{x}</b><br><b>%{data.name}</b>=%{y:,.0f}円<br><b>総資産</b>=%{customdata[0]:,.0f}円<extra></extra>"
             )
 
         fig.update_layout(
@@ -676,11 +678,12 @@ def main():
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
         
+        # 縦線追加
         fig.add_vline(x=target_age, line_width=2, line_dash="dash", line_color="#831843")
 
         st.plotly_chart(fig, use_container_width=True)
 
-    # --- その他表示 ---
+    # --- 3. その他表示 ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.radio("グラフ表示モード", ["積み上げ (総資産)", "折れ線 (個別推移)"], 
              key="graph_mode", horizontal=True)
