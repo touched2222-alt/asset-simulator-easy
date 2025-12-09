@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import json
 import io 
+import plotly.graph_objects as go # 追加
 
 # --- デフォルト設定値 ---
 DEFAULT_CONFIG = {
@@ -68,7 +69,7 @@ def next_step_guide(text):
     st.info(f"👉 **入力完了ですか？ 上のタブで『{text}』へ進んでください**")
 
 # --- メインアプリ ---
-st.set_page_config(page_title="簡易資産シミュレータ v6.2", page_icon="💎", layout="wide")
+st.set_page_config(page_title="簡易資産シミュレータ v6.3", page_icon="💎", layout="wide")
 
 def main():
     if "first_load_done" not in st.session_state:
@@ -113,7 +114,6 @@ def main():
             font-weight: 600 !important;
         }
         
-        /* タブデザイン */
         .stTabs [data-baseweb="tab-list"] {
             gap: 0px;
             border-bottom: none;
@@ -212,8 +212,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("💎 簡易資産シミュレータ v6.2")
-    st.caption("Ver. Graph V-Line & Total Tooltip")
+    st.title("💎 簡易資産シミュレータ v6.3")
+    st.caption("Ver. Tooltip All-in-One & Layout Fixed")
 
     # --- サイドバー設定 ---
     c_head, c_share = st.sidebar.columns([1, 0.5])
@@ -271,12 +271,11 @@ def main():
         st.subheader("🏢 働き方と収入の入力")
         age_work_last = st.number_input("何歳まで働く？", 50, 90, key="age_work_last")
         st.markdown("##### 手取り年収 (万円)")
-        inc_help = "ボーナスを含めた、年間の手取り収入の合計を入力してください。"
-        inc_20s = st.number_input("〜29歳", 0, 5000, step=10, key="inc_20s", help=inc_help) * 10000
-        inc_30s = st.number_input("30〜39歳", 0, 5000, step=10, key="inc_30s", help=inc_help) * 10000
-        inc_40s = st.number_input("40〜49歳", 0, 5000, step=10, key="inc_40s", help=inc_help) * 10000
-        inc_50s = st.number_input("50〜59歳", 0, 5000, step=10, key="inc_50s", help=inc_help) * 10000
-        inc_60s = st.number_input("60歳〜", 0, 5000, step=10, key="inc_60s", help=inc_help) * 10000
+        inc_20s = st.number_input("〜29歳", 0, 5000, step=10, key="inc_20s") * 10000
+        inc_30s = st.number_input("30〜39歳", 0, 5000, step=10, key="inc_30s") * 10000
+        inc_40s = st.number_input("40〜49歳", 0, 5000, step=10, key="inc_40s") * 10000
+        inc_50s = st.number_input("50〜59歳", 0, 5000, step=10, key="inc_50s") * 10000
+        inc_60s = st.number_input("60歳〜", 0, 5000, step=10, key="inc_60s") * 10000
         st.markdown("---")
         st.subheader("🐢 年金・退職金")
         age_401k_get = st.number_input("401k受取年齢", 50, 80, key="age_401k_get")
@@ -287,22 +286,20 @@ def main():
         st.markdown("---")
         st.subheader("🛒 支出設定")
         st.markdown("##### 基本生活費 (月/万円)")
-        cost_help = "家賃、食費、光熱費など、毎月必ず出ていくお金です。"
-        cost_20s = st.number_input("〜29歳 生活費", 0, 500, step=1, key="cost_20s", help=cost_help) * 10000
-        cost_30s = st.number_input("30代 生活費", 0, 500, step=1, key="cost_30s", help=cost_help) * 10000
-        cost_40s = st.number_input("40代 生活費", 0, 500, step=1, key="cost_40s", help=cost_help) * 10000
-        cost_50s = st.number_input("50代 生活費", 0, 500, step=1, key="cost_50s", help=cost_help) * 10000
+        cost_20s = st.number_input("〜29歳 生活費", 0, 500, step=1, key="cost_20s") * 10000
+        cost_30s = st.number_input("30代 生活費", 0, 500, step=1, key="cost_30s") * 10000
+        cost_40s = st.number_input("40代 生活費", 0, 500, step=1, key="cost_40s") * 10000
+        cost_50s = st.number_input("50代 生活費", 0, 500, step=1, key="cost_50s") * 10000
         c_60, c_65 = st.columns(2)
         with c_60:
-            cost_6064 = st.number_input("60〜64歳 生活費", 0, 500, step=1, key="cost_6064", help="再雇用期間など") * 10000
+            cost_6064 = st.number_input("60〜64歳 生活費", 0, 500, step=1, key="cost_6064") * 10000
         with c_65:
-            cost_65 = st.number_input("65歳〜 生活費", 0, 500, step=1, key="cost_65", help="年金生活など") * 10000
+            cost_65 = st.number_input("65歳〜 生活費", 0, 500, step=1, key="cost_65") * 10000
         st.markdown("##### 年間特別支出 (万円/年)")
-        exp_help = "旅行、帰省、家電買替、車検など、年単位で発生する特別なお金です。"
-        exp_20s = st.number_input("〜29歳 特別出費", 0, 5000, step=10, key="exp_20s", help=exp_help) * 10000
-        exp_30s = st.number_input("30代 特別出費", 0, 5000, step=10, key="exp_30s", help=exp_help) * 10000
-        exp_40s = st.number_input("40代 特別出費", 0, 5000, step=10, key="exp_40s", help=exp_help) * 10000
-        exp_50s = st.number_input("50代 特別出費", 0, 5000, step=10, key="exp_50s", help=exp_help) * 10000
+        exp_20s = st.number_input("〜29歳 特別出費", 0, 5000, step=10, key="exp_20s") * 10000
+        exp_30s = st.number_input("30代 特別出費", 0, 5000, step=10, key="exp_30s") * 10000
+        exp_40s = st.number_input("40代 特別出費", 0, 5000, step=10, key="exp_40s") * 10000
+        exp_50s = st.number_input("50代 特別出費", 0, 5000, step=10, key="exp_50s") * 10000
         c_e60, c_e65 = st.columns(2)
         with c_e60:
             exp_6064 = st.number_input("60〜64歳 特別出費", 0, 5000, step=10, key="exp_6064") * 10000
@@ -331,16 +328,14 @@ def main():
         st.markdown("**3. 401k/iDeCo (確定拠出年金)**")
         c_k1, c_k2 = st.columns(2)
         with c_k1:
-            k401_monthly = st.number_input("401k積立(月/円)", 0, 500000, step=1000, key="k401_monthly", help="給与天引きされる掛金です。")
+            k401_monthly = st.number_input("401k積立(月/円)", 0, 500000, step=1000, key="k401_monthly")
         with c_k2:
-            k401_stop_age = st.number_input("401k積立終了年齢", 20, 70, key="k401_stop_age", help="拠出が終了する年齢です（例: 60歳）。")
+            k401_stop_age = st.number_input("401k積立終了年齢", 20, 70, key="k401_stop_age")
         st.markdown("---")
         st.subheader("💧 最低貯蓄額 (ダム水位)")
-        st.caption("最低貯蓄額を超えた余剰金は、**「NISA 成長投資枠 (最大年240万)」** を埋めるために自動投資されます。")
-        dam_help = "生活防衛資金として、投資に回さずに現金で持っておきたい最低金額です。"
-        dam_1 = st.number_input("〜49歳 最低貯蓄(万)", 0, 10000, step=50, key="dam_1", help=dam_help) * 10000
-        dam_2 = st.number_input("50代 最低貯蓄(万)", 0, 10000, step=50, key="dam_2", help=dam_help) * 10000
-        dam_3 = st.number_input("60歳〜 最低貯蓄(万)", 0, 10000, step=50, key="dam_3", help=dam_help) * 10000
+        dam_1 = st.number_input("〜49歳 最低貯蓄(万)", 0, 10000, step=50, key="dam_1") * 10000
+        dam_2 = st.number_input("50代 最低貯蓄(万)", 0, 10000, step=50, key="dam_2") * 10000
+        dam_3 = st.number_input("60歳〜 最低貯蓄(万)", 0, 10000, step=50, key="dam_3") * 10000
         next_step_guide("STEP 4: 取崩")
 
     with tab4:
@@ -606,11 +601,72 @@ def main():
             "NISA元本": int(nisa_principal) 
         })
 
-    # --- 1. スライダー (レイアウト変更: グラフの上に配置) ---
+    # --- 1. グラフ ---
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    if "graph_mode" not in st.session_state:
+        st.session_state["graph_mode"] = "積み上げ (総資産)"
+    current_mode = st.session_state["graph_mode"]
+
+    df = pd.DataFrame(records)
+    df_melt = df.melt(id_vars=["Age"], value_vars=["Cash", "401k", "NISA", "Other"], var_name="Asset", value_name="Amount")
+    
+    # マージしてTotalを取得
+    df_melt = pd.merge(df_melt, df[["Age", "Total"]], on="Age", how="left")
+
+    colors = {"Cash": "#90a4ae", "NISA": "#e57373", "401k": "#81c784", "Other": "#ba68c8"}
+    
+    if current_mode == "積み上げ (総資産)":
+        fig = px.area(df_melt, x="Age", y="Amount", color="Asset", 
+                      labels={"Amount": "金額 (円)", "Age": "年齢"}, 
+                      color_discrete_map=colors,
+                      custom_data=["Total"])
+    else:
+        fig = px.line(df_melt, x="Age", y="Amount", color="Asset", 
+                      labels={"Amount": "金額 (円)", "Age": "年齢"}, 
+                      color_discrete_map=colors,
+                      custom_data=["Total"])
+
+    # ★ 透明なTotalラインを追加（凡例とツールチップに「総資産」を出すため）
+    fig.add_trace(go.Scatter(
+        x=df['Age'], y=df['Total'],
+        mode='lines',
+        name='■ 総資産', # 凡例名
+        line=dict(width=0, color='rgba(0,0,0,0)'), # 透明
+        hovertemplate='%{y:,.0f}円<extra></extra>', # ツールチップ
+        showlegend=True
+    ))
+
+    # ツールチップのフォーマット
+    fig.update_traces(
+        selector=dict(type='area'), # areaチャート部分のみ適用
+        hovertemplate="<b>%{data.name}</b>: %{y:,.0f}円<extra></extra>"
+    )
+    if current_mode == "折れ線 (個別推移)":
+        fig.update_traces(
+            selector=dict(type='scatter', mode='lines'), # lineチャート部分
+            hovertemplate="<b>%{data.name}</b>: %{y:,.0f}円<extra></extra>"
+        )
+
+    # レイアウト設定
+    fig.update_layout(
+        hovermode="x unified",
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        font={"family": "Zen Kaku Gothic New", "color": "#5d5555"},
+        margin=dict(l=20, r=20, t=40, b=20),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+    
+    # 縦線追加
+    fig.add_vline(x=target_age, line_width=2, line_dash="dash", line_color="#831843")
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    # --- 2. スライダーと結果表示 (グラフの下) ---
     st.markdown("### 📅 年齢別 資産チェック")
     target_age = st.slider("確認したい年齢を選択してください", current_age, end_age, 65, label_visibility="collapsed")
-    
-    df = pd.DataFrame(records)
     
     try:
         row = df[df["Age"] == target_age].iloc[0]
@@ -622,51 +678,7 @@ def main():
         c5.metric("✨ その他運用", f"{row['Other']/10000:,.0f}万円")
     except: st.error("データ取得エラー")
 
-    # --- 2. グラフ (縦線を追加 & ツールチップ修正) ---
     st.markdown("<br>", unsafe_allow_html=True)
-    
-    if "graph_mode" not in st.session_state:
-        st.session_state["graph_mode"] = "積み上げ (総資産)"
-    current_mode = st.session_state["graph_mode"]
-
-    df_melt = df.melt(id_vars=["Age"], value_vars=["Cash", "401k", "NISA", "Other"], var_name="Asset", value_name="Amount")
-    
-    # ★追加: 総資産データをマージしてツールチップ用に準備
-    df_melt = pd.merge(df_melt, df[["Age", "Total"]], on="Age", how="left")
-
-    colors = {"Cash": "#90a4ae", "NISA": "#e57373", "401k": "#81c784", "Other": "#ba68c8"}
-    
-    if current_mode == "積み上げ (総資産)":
-        fig = px.area(df_melt, x="Age", y="Amount", color="Asset", 
-                      labels={"Amount": "金額 (円)", "Age": "年齢"}, 
-                      color_discrete_map=colors,
-                      custom_data=["Total"]) # Totalをカスタムデータに追加
-    else:
-        fig = px.line(df_melt, x="Age", y="Amount", color="Asset", 
-                      labels={"Amount": "金額 (円)", "Age": "年齢"}, 
-                      color_discrete_map=colors,
-                      custom_data=["Total"])
-
-    # ★修正: ツールチップに総資産を表示
-    fig.update_traces(
-        hovertemplate="<b>%{data.name}</b>: %{y:,.0f}円<br><b>総資産</b>: %{customdata[0]:,.0f}円<extra></extra>"
-    )
-
-    fig.update_layout(
-        hovermode="x unified",
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        font={"family": "Zen Kaku Gothic New", "color": "#5d5555"},
-        margin=dict(l=20, r=20, t=40, b=20),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-    )
-    
-    # ★追加: スライダー連動の縦線
-    fig.add_vline(x=target_age, line_width=2, line_dash="dash", line_color="#831843")
-
-    st.plotly_chart(fig, use_container_width=True)
-
-    # --- 3. その他表示 ---
     st.radio("グラフ表示モード", ["積み上げ (総資産)", "折れ線 (個別推移)"], 
              key="graph_mode", horizontal=True)
 
