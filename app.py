@@ -13,10 +13,9 @@ DEFAULT_CONFIG = {
     "inc_20s": 300, "inc_30s": 400, "inc_40s": 500, "inc_50s": 600, "inc_60s": 400,
     "age_401k_get": 65, "tax_401k": 12.0, "age_pension": 65, "pension_monthly": 200000, "tax_pension": 15.0,
     
-    # 支出設定 (60代を分割)
+    # 支出設定
     "cost_20s": 20, "cost_30s": 25, "cost_40s": 30, "cost_50s": 30, 
     "cost_6064": 28, "cost_65": 25,
-    
     "exp_20s": 50, "exp_30s": 100, "exp_40s": 150, "exp_50s": 100, 
     "exp_6064": 80, "exp_65": 50,
 
@@ -69,7 +68,7 @@ def next_step_guide(text):
     st.info(f"👉 **入力完了ですか？ 上のタブで『{text}』へ進んでください**")
 
 # --- メインアプリ ---
-st.set_page_config(page_title="簡易資産シミュレータ v5.9", page_icon="💎", layout="wide")
+st.set_page_config(page_title="簡易資産シミュレータ v6.0", page_icon="💎", layout="wide")
 
 def main():
     if "first_load_done" not in st.session_state:
@@ -114,7 +113,6 @@ def main():
             font-weight: 600 !important;
         }
         
-        /* タブデザイン */
         .stTabs [data-baseweb="tab-list"] {
             gap: 0px;
             border-bottom: none;
@@ -212,8 +210,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("💎 簡易資産シミュレータ v5.9")
-    st.caption("Ver. Bugfix Fixed NameError")
+    st.title("💎 簡易資産シミュレータ v6.0")
+    st.caption("Ver. Bugfix NISA Growth Quota Logic")
 
     # --- サイドバー設定 ---
     st.sidebar.header("⚙️ 設定パネル")
@@ -293,7 +291,6 @@ def main():
         cost_40s = st.number_input("40代 生活費", 0, 500, step=1, key="cost_40s", help=cost_help) * 10000
         cost_50s = st.number_input("50代 生活費", 0, 500, step=1, key="cost_50s", help=cost_help) * 10000
         
-        # 60代を分割
         c_60, c_65 = st.columns(2)
         with c_60:
             cost_6064 = st.number_input("60〜64歳 生活費", 0, 500, step=1, key="cost_6064", help="再雇用期間など") * 10000
@@ -307,7 +304,6 @@ def main():
         exp_40s = st.number_input("40代 特別出費", 0, 5000, step=10, key="exp_40s", help=exp_help) * 10000
         exp_50s = st.number_input("50代 特別出費", 0, 5000, step=10, key="exp_50s", help=exp_help) * 10000
         
-        # 60代を分割
         c_e60, c_e65 = st.columns(2)
         with c_e60:
             exp_6064 = st.number_input("60〜64歳 特別出費", 0, 5000, step=10, key="exp_6064") * 10000
@@ -491,7 +487,7 @@ def main():
     # --- カウンター表示 ---
     st.sidebar.markdown("---")
     st.sidebar.caption("👀 訪問者数")
-    st.sidebar.markdown(f"![Visitor Count](https://visitor-badge.laobi.icu/badge?page_id=touched2222_asset_simulator_v5)")
+    st.sidebar.markdown(f"![Visitor Count](https://visitor-badge.laobi.icu/badge?page_id=touched2222_asset_simulator_v6)")
 
     # --- 計算ロジック ---
     records = []
@@ -527,11 +523,10 @@ def main():
         paypay *= (1 + r_paypay)
         if age < age_401k_get: k401 *= (1 + r_401k)
 
-        # 2. 収入 & 特別支出 (年齢ベースで決定)
+        # 2. 収入 & 特別支出
         is_working = (age <= age_work_last)
         salary = 0
         
-        # 収入は働いている時だけ
         if is_working:
             if age < 30: salary = inc_20s
             elif age < 40: salary = inc_30s
@@ -539,7 +534,6 @@ def main():
             elif age < 60: salary = inc_50s
             else: salary = inc_60s
 
-        # 特別支出は年齢で決まる (働いてなくてもかかる)
         annual_extra_exp = 0
         if age < 30: annual_extra_exp = exp_20s
         elif age < 40: annual_extra_exp = exp_30s
@@ -566,13 +560,12 @@ def main():
         else:
             current_cost = base_monthly_cost * 12
 
-        # 4. 積立 (つみたて投資枠)
+        # 4. 積立
         val_k401_add = k401_monthly * 12 if (is_working and age < age_401k_get and age <= k401_stop_age) else 0 
         
         nisa_tsumitate_year = 0
         nisa_growth_year = 0
         
-        # 積立 (cash > 0 or working)
         can_invest = (cash > 0 or is_working)
 
         val_nisa_add = 0
@@ -614,7 +607,6 @@ def main():
         # 9. 補填
         if cash < 0:
             shortage = abs(cash)
-            
             current_total_investments = nisa + paypay + k401
 
             def calc_actual_limit(mode, val, current_asset, total_assets):
@@ -634,21 +626,17 @@ def main():
                 gross_needed = needed / (1 - tax_rate) if (1 - tax_rate) > 0 else needed
                 can_withdraw_gross = min(gross_needed, current_val, limit_yen)
                 net_cash_obtained = can_withdraw_gross * (1 - tax_rate)
-                
                 new_val = current_val - can_withdraw_gross
                 new_principal = principal_val
-                
                 if is_nisa and current_val > 0 and can_withdraw_gross > 0:
                     ratio = can_withdraw_gross / current_val
                     new_principal = principal_val * (1 - ratio)
-                
                 return net_cash_obtained, new_val, new_principal
 
             if priority == "新NISAから先に使う":
                 if age >= nisa_start_age:
                     pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True, limit_nisa_yen, 0.0)
                     shortage -= pay_nisa
-                
                 if age >= paypay_start_age:
                     pay_other, paypay, _ = withdraw_asset_logic(shortage, paypay, 0, False, limit_other_yen, tax_rate_other)
                     shortage -= pay_other
@@ -656,21 +644,21 @@ def main():
                 if age >= paypay_start_age:
                     pay_other, paypay, _ = withdraw_asset_logic(shortage, paypay, 0, False, limit_other_yen, tax_rate_other)
                     shortage -= pay_other
-
                 if age >= nisa_start_age:
                     pay_nisa, nisa, nisa_principal = withdraw_asset_logic(shortage, nisa, nisa_principal, True, limit_nisa_yen, 0.0)
                     shortage -= pay_nisa
             
             cash = -shortage
 
-        # 10. ダム機能
+        # 10. ダム機能 (★修正版 v6.0)
         if age < 50: target = dam_1
         elif age < 60: target = dam_2
         else: target = dam_3
 
         if cash > target and age <= nisa_stop_age:
             surplus = cash - target
-            nisa_remaining_space = max(0, NISA_GROWTH_LIMIT - nisa_tsumitate_year)
+            # ★修正: つみたて枠(120万)使用分を引かずに、成長枠(240万)をフル計算
+            nisa_remaining_space = NISA_GROWTH_LIMIT # ここが修正点
             lifetime_room = max(0, NISA_LIFETIME_LIMIT - nisa_principal)
             move = min(surplus, nisa_remaining_space, lifetime_room)
             
@@ -694,7 +682,6 @@ def main():
     # --- 結果表示 ---
     df = pd.DataFrame(records)
 
-    # 1. グラフ
     if "graph_mode" not in st.session_state:
         st.session_state["graph_mode"] = "積み上げ (総資産)"
     current_mode = st.session_state["graph_mode"]
@@ -721,7 +708,6 @@ def main():
     )
     st.plotly_chart(fig, use_container_width=True)
 
-    # 2. スライダーと結果表示
     st.markdown("### 📅 年齢別 資産チェック")
     target_age = st.slider("確認したい年齢を選択してください", current_age, end_age, 65, label_visibility="collapsed")
     
@@ -735,17 +721,14 @@ def main():
         c5.metric("✨ その他運用", f"{row['Other']/10000:,.0f}万円")
     except: st.error("データ取得エラー")
 
-    # 3. グラフ切替ボタン
     st.markdown("<br>", unsafe_allow_html=True)
     st.radio("グラフ表示モード", ["積み上げ (総資産)", "折れ線 (個別推移)"], 
              key="graph_mode", horizontal=True)
 
-    # 4. 明細
     st.markdown("<br>", unsafe_allow_html=True)
     with st.expander("📝 年単位の資産明細を表示"):
         st.dataframe(df, use_container_width=True, height=300)
 
-    # 5. ルール
     st.markdown("<br>", unsafe_allow_html=True)
     with st.expander("ℹ️ このシミュレータのルール（クリックで開く）"):
         st.markdown("""
