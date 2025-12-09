@@ -68,7 +68,7 @@ def next_step_guide(text):
     st.info(f"👉 **入力完了ですか？ 上のタブで『{text}』へ進んでください**")
 
 # --- メインアプリ ---
-st.set_page_config(page_title="簡易資産シミュレータ v6.0", page_icon="💎", layout="wide")
+st.set_page_config(page_title="簡易資産シミュレータ v6.1", page_icon="💎", layout="wide")
 
 def main():
     if "first_load_done" not in st.session_state:
@@ -98,6 +98,7 @@ def main():
             background-color: #f7f7f5;
             border-right: 1px solid #e0e0e0;
         }
+        /* サイドバータイトルの色 */
         [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
             color: #5c5c5c !important;
         }
@@ -207,15 +208,29 @@ def main():
             color: #424242;
             border: 1px solid #e0e0e0;
         }
+        
+        /* 共有ボタンの位置調整 */
+        div.stButton > button:first-child {
+            width: 100%;
+        }
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("💎 簡易資産シミュレータ v6.0")
-    st.caption("Ver. Bugfix NISA Growth Quota Logic")
+    st.title("💎 簡易資産シミュレータ v6.1")
+    st.caption("Ver. Share Button Added")
 
     # --- サイドバー設定 ---
-    st.sidebar.header("⚙️ 設定パネル")
     
+    # ★変更: 設定パネルの文字と共有ボタンを横並びに
+    c_head, c_share = st.sidebar.columns([1, 0.5])
+    with c_head:
+        st.header("⚙️ 設定")
+    with c_share:
+        # 共有ボタン: 押すとURLコピー用のコードブロックを表示
+        if st.button("🔗 共有"):
+            st.sidebar.info("👇 URLをコピー")
+            st.sidebar.code("https://asset-simulator-easy.streamlit.app/", language=None)
+            
     st.sidebar.subheader("📁 設定ファイル")
     col_dl, col_ul = st.sidebar.columns(2)
     with col_dl:
@@ -291,6 +306,7 @@ def main():
         cost_40s = st.number_input("40代 生活費", 0, 500, step=1, key="cost_40s", help=cost_help) * 10000
         cost_50s = st.number_input("50代 生活費", 0, 500, step=1, key="cost_50s", help=cost_help) * 10000
         
+        # 60代を分割
         c_60, c_65 = st.columns(2)
         with c_60:
             cost_6064 = st.number_input("60〜64歳 生活費", 0, 500, step=1, key="cost_6064", help="再雇用期間など") * 10000
@@ -304,6 +320,7 @@ def main():
         exp_40s = st.number_input("40代 特別出費", 0, 5000, step=10, key="exp_40s", help=exp_help) * 10000
         exp_50s = st.number_input("50代 特別出費", 0, 5000, step=10, key="exp_50s", help=exp_help) * 10000
         
+        # 60代を分割
         c_e60, c_e65 = st.columns(2)
         with c_e60:
             exp_6064 = st.number_input("60〜64歳 特別出費", 0, 5000, step=10, key="exp_6064") * 10000
@@ -657,8 +674,7 @@ def main():
 
         if cash > target and age <= nisa_stop_age:
             surplus = cash - target
-            # ★修正: つみたて枠(120万)使用分を引かずに、成長枠(240万)をフル計算
-            nisa_remaining_space = NISA_GROWTH_LIMIT # ここが修正点
+            nisa_remaining_space = NISA_GROWTH_LIMIT 
             lifetime_room = max(0, NISA_LIFETIME_LIMIT - nisa_principal)
             move = min(surplus, nisa_remaining_space, lifetime_room)
             
