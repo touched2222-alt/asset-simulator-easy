@@ -69,7 +69,7 @@ def next_step_guide(text):
     st.info(f"👉 **入力完了ですか？ 上のタブで『{text}』へ進んでください**")
 
 # --- メインアプリ ---
-st.set_page_config(page_title="簡易資産シミュレータ v6.5", page_icon="💎", layout="wide")
+st.set_page_config(page_title="簡易資産シミュレータ v6.6", page_icon="💎", layout="wide")
 
 def main():
     if "first_load_done" not in st.session_state:
@@ -212,8 +212,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("💎 簡易資産シミュレータ v6.5")
-    st.caption("Ver. Tooltip Format Improvement")
+    st.title("💎 簡易資産シミュレータ v6.6")
+    st.caption("Ver. Tooltip Cleaned")
 
     # --- サイドバー設定 ---
     c_head, c_share = st.sidebar.columns([1, 0.5])
@@ -648,25 +648,28 @@ def main():
                           color_discrete_map=colors,
                           custom_data=["Total"])
 
-        # 透明なTotalラインを追加
+        # ★ 修正: ヘッダーに年齢を表示し、ツールチップから重複を削除
+        fig.update_xaxes(ticksuffix="歳") # ヘッダーを「33歳」などにする
+
         fig.add_trace(go.Scatter(
             x=df['Age'], y=df['Total'],
             mode='lines',
             name='■ 総資産',
             line=dict(width=0, color='rgba(0,0,0,0)'),
-            hovertemplate='年齢=%{x}<br>総資産=%{y:,.0f}円<extra></extra>', # 修正済み
+            # Bodyから年齢を削除
+            hovertemplate='総資産=%{y:,.0f}円<extra></extra>',
             showlegend=True
         ))
 
-        # ツールチップのフォーマット修正 (年齢=, 総資産= を追加)
         fig.update_traces(
             selector=dict(type='area'),
-            hovertemplate="<b>年齢=%{x}</b><br><b>%{data.name}</b>=%{y:,.0f}円<br><b>総資産</b>=%{customdata[0]:,.0f}円<extra></extra>"
+            # Bodyから年齢を削除
+            hovertemplate="<b>%{data.name}</b>=%{y:,.0f}円<br><b>総資産</b>=%{customdata[0]:,.0f}円<extra></extra>"
         )
         if current_mode == "折れ線 (個別推移)":
             fig.update_traces(
                 selector=dict(type='scatter', mode='lines'),
-                hovertemplate="<b>年齢=%{x}</b><br><b>%{data.name}</b>=%{y:,.0f}円<br><b>総資産</b>=%{customdata[0]:,.0f}円<extra></extra>"
+                hovertemplate="<b>%{data.name}</b>=%{y:,.0f}円<br><b>総資産</b>=%{customdata[0]:,.0f}円<extra></extra>"
             )
 
         fig.update_layout(
@@ -678,7 +681,6 @@ def main():
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
         
-        # 縦線追加
         fig.add_vline(x=target_age, line_width=2, line_dash="dash", line_color="#831843")
 
         st.plotly_chart(fig, use_container_width=True)
